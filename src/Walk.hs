@@ -7,7 +7,8 @@ import System.FilePath ((</>))
 import Data.List
 import Data.Maybe (mapMaybe)
 import qualified Data.ByteString as B
-import Parse (parseFile, Expr, findMatches, Match)
+import Parse (parseFile, Expr)
+import Matcher (findMatches, Match)
 
 listDir:: (FilePath -> Bool) -> FilePath -> IO [FilePath]
 listDir fileFilter path = do
