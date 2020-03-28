@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
+
 
 module Parse where
 
@@ -26,9 +28,17 @@ space = skipWhile isSpace
 space1 :: Parser ()
 space1 = skip isSpace >> space
 
-isNewline w = w == 13 || w == 10
+isNewLine w = w == 13 || w == 10
 
 isSpace w = isNewLine w || w == 32 
+
+anyBracket :: Parser (B.ByteString, B.ByteString)
+anyBracket = choice $ fmap (\(start, end) -> (,end) <$> string start) [
+          ("(", ")")
+        , ("[", "]")
+        , ("{", "}")
+    ]
+    
 
 parseSep :: Parser Expr
 parseSep = Sep <$> (string ";" <|> string ",")
@@ -38,25 +48,28 @@ parseManyExprs = ignored >> parseExpr `sepBy` ignored <* ignored
 
 parseExpr :: Parser Expr
 parseExpr = choice [
-              parseId
+              parseVal
+            , parseId
             , parseVar
-            , parseVal
             , parseOp
-            , parseBlock "{" "}"
-            , parseBlock "(" ")"
-            , parseBlock "[" "]"
+            , parseBlock
             , parseSep
             -- FIXME  =smth
+            -- FIXME q qq qw
+            -- FIXME regexp - it always goes after op or first statement / after separator
             ]
 
 parseVar = Var <$> varType <*> parseExpr
     where varType = word8 (BI.c2w '@') <|> word8 (BI.c2w '$') <|> word8 (BI.c2w '%')
 
+
+isOperator = inClass "-<>=&/\\!.*+?^:|~"
+
 parseOp = do
     op <- choice [
           (src regexpMatch)
         , (src prototype)
-        , (takeWhile1 $ inClass "-<>=&/\\!.*+?^:|~")
+        , (takeWhile1 isOperator)
         ]
     return $ Op op
     where
@@ -68,16 +81,23 @@ parseOp = do
            (string "=~" <|> string "!~")
            space
            option "" (string "m")
-           (parseBlock "/" "/" <|> parseBlock "(" ")" <|> parseBlock "{" "}") --FIXME hack :(
+           parseBlock --FIXME hack regular expression :(
 
 src p = fst <$> match p
 
 parseId = Id <$> (takeWhile1 $ inClass "a-zA-Z_:")
 
 
+anySymbolBracket = anyBracket <|> (satisfy isOperator >>= \w -> return (B.singleton w, B.singleton w))
+
+parseQ = do
+    string "qq" <|> string "qw" <|> string "q"
+    (_, end) <- anySymbolBracket
+    stringWithEscapesTill end
+
 parseVal :: Parser Expr
 parseVal = do
-    Val <$> (num <|> singleQuotedString <|> doubleQuotedString <|> hereDocument)
+    Val <$> (num <|> singleQuotedString <|> doubleQuotedString <|> hereDocument <|> parseQ)
     where
         num = src $ takeWhile1 isPartOfNumber
 
@@ -107,9 +127,9 @@ comment = do
     skipWhile notIsNewLine
     return ()
 
-parseBlock :: B.ByteString -> B.ByteString -> Parser Expr 
-parseBlock start end = do
-    string start
+parseBlock :: Parser Expr 
+parseBlock = do
+    (start, end) <- anyBracket
     exprs <- parseManyExprs
     string end
     return $ Block start exprs end
