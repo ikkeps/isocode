@@ -7,7 +7,7 @@ import System.FilePath ((</>))
 import Data.List
 import Data.Maybe (mapMaybe)
 import qualified Data.ByteString as B
-import Parse (parseFile, Expr, findMatches, Extract, Match)
+import Parse (parseFile, Expr, findMatches, Match)
 
 listDir:: (FilePath -> Bool) -> FilePath -> IO [FilePath]
 listDir fileFilter path = do
@@ -24,6 +24,8 @@ main :: IO ()
 main = do --"/home/spek/tmp/otrs"
     blob <- B.readFile "/home/spek/fun/isocode/examples/should_match.pl"
     let Right exprs = parseFile blob
+
+    putStrLn $ show exprs
 
     fileNames <- listDir (\p -> (".pl" `isSuffixOf` p) || (".pm" `isSuffixOf` p))  "/home/spek/tmp/otrs" -- "/home/spek/fun/isocode/examples" --  --  -- 
     putStrLn "Parsing..."

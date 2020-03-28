@@ -2,7 +2,6 @@
 
 module Parse where
 
-import Data.List
 import Control.Applicative
 import qualified Data.Word as W
 import Data.Attoparsec.ByteString
@@ -10,7 +9,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
 import Control.Monad (void)
 
-import ParseStrings (escapedString)
 
 data Expr = Id B.ByteString    -- abcde
           | Op B.ByteString -- */+/-.<> => ->
@@ -18,19 +16,8 @@ data Expr = Id B.ByteString    -- abcde
           | Block B.ByteString [Expr] B.ByteString -- {*} / [] / () --FIXME stupid
           | Sep B.ByteString   -- ; or ,
           | Val B.ByteString -- 123.0 / "123abc" / '123abc'
-        deriving (Eq)
+        deriving (Eq, Show)
         
-instance Show Expr where
-    show (Id a) = BI.unpackChars a
-    show (Op a) = BI.unpackChars a
-    show (Sep a) = BI.unpackChars a
-    show (Var kind expr) = [BI.w2c kind] ++ show expr 
-    show (Val a) = BI.unpackChars a
-    show (Block open exprs close) = BI.unpackChars open ++"\n" ++ (showExprs exprs) ++ "\n" ++ BI.unpackChars close
-    
-showExprs :: [Expr] -> String
-showExprs exprs = Data.List.intercalate " " $ fmap show exprs
-
 
 space :: Parser ()
 space = skipWhile isSpace
@@ -50,8 +37,8 @@ parseExpr :: Parser Expr
 parseExpr = choice [
               parseId
             , parseVar
-            , parseOp
             , parseVal
+            , parseOp
             , parseBlock "{" "}"
             , parseBlock "(" ")"
             , parseBlock "[" "]"
@@ -85,9 +72,23 @@ src p = fst <$> match p
 
 parseId = Id <$> (takeWhile1 $ inClass "a-zA-Z_:")
 
+
+
+hereDocument :: Parser ()
+hereDocument = do
+    string "<<"
+    Id id <- parseId --FIXME skip
+    ignored
+    string ";"
+    ignored
+    inString id
+    return ()
+    
+
+
 parseVal :: Parser Expr
 parseVal = do
-    Val <$> src (num <|> singleQuotedString <|> doubleQuotedString)
+    Val <$> src (num <|> singleQuotedString <|> doubleQuotedString <|> hereDocument)
     where
         num = void $ takeWhile1 isPartOfNumber
         doubleQuotedString = escapedString "\"" "\""
@@ -112,6 +113,24 @@ parseBlock start end = do
     string end
     return $ Block start exprs end
 
+
+escapedString :: B.ByteString -> B.ByteString -> Parser ()
+escapedString begin end = do
+    string begin
+    inString end
+    return ()
+      
+inString :: B.ByteString -> Parser B.ByteString
+inString end = do
+    src $ manyTill anyWord8 (string end <|> (escapeSeq >> inString end))
+
+escapeSeq = do
+    string "\\"
+    choice [
+        ((string "x" <|> string "0") >> count 2 (satisfy $ inClass "0-9") >> return ())
+      , (string "c" >> anyWord8 >> return ())
+      , void anyWord8 -- dont care about others escaped values
+        ]
 
 parseWhole :: Parser [Expr]
 parseWhole = do
