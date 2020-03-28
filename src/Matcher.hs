@@ -10,7 +10,11 @@ import qualified Data.Word as W
 import Control.Applicative
 
 
-findMatches blob exprs = parseOnly (generateMatcher exprs) blob
+-- findMatches blob exprs = parseOnly (generateMatcher exprs) blob
+
+findMatches blob exprs = result $ parseFile blob
+    where result (Right given) = if given == exprs then Right [Match blob []] else Right []
+          result (Left err) = Left err
 
 generateMatcher :: [Expr] -> Parser [Match]
 generateMatcher exprs = do
@@ -31,7 +35,7 @@ matchAndSource shouldMatch = do
 generate :: Expr -> Parser [Extract]
 generate (Id a) = string a >> return []
 generate (Op a) = string a >> return []
-generate (Sep a) = string a >> return [] -- FIXME probably should not match separator in some cases
+generate (Sep a) = word8 a >> return [] -- FIXME probably should not match separator in some cases
 generate orig@(Var kind _expr) = do
     word8 kind
     origExpr <- parseExpr -- <- actually parse anything
@@ -39,7 +43,7 @@ generate orig@(Var kind _expr) = do
 generate (Val a) = do
     Val orig <- parseVal
     if orig /= a
-        then fail "Val does not match"
+        then return [VarName orig a]
         else return []
 generate (Block begin exprs end) = do
     string begin
@@ -69,7 +73,7 @@ instance Show Match where
 firstChar :: Expr -> W.Word8
 firstChar (Id a) = B.head a
 firstChar (Op a) = B.head a
-firstChar (Sep a) = B.head a
+firstChar (Sep a) = a
 firstChar (Var kind _) = kind
 firstChar (Val a) = B.head a
 firstChar (Block begin _ _) = B.head begin

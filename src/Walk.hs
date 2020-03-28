@@ -2,6 +2,8 @@
 
 module Main where
 
+import Text.Pretty.Simple (pPrint)
+
 import System.Directory
 import System.FilePath ((</>))
 import Data.List
@@ -23,12 +25,16 @@ listDir fileFilter path = do
 
 main :: IO ()
 main = do --"/home/spek/tmp/otrs"
-    blob <- B.readFile "/home/spek/fun/isocode/examples/should_match.pl"
-    let Right exprs = parseFile blob
+    blob <- B.readFile "/home/spek/tmp/otrs/scripts/test/SupportBundleGenerator.t"  
+    let eitherExprs = parseFile blob
 
-    putStrLn $ show exprs
+    exprs <- case eitherExprs of
+                  Right exprs -> return exprs
+                  Left msg -> fail msg
 
-    fileNames <- listDir (\p -> (".pl" `isSuffixOf` p) || (".pm" `isSuffixOf` p))  "/home/spek/tmp/otrs" -- "/home/spek/fun/isocode/examples" --  --  -- 
+    pPrint exprs -- putStrLn $ show exprs
+
+    fileNames <- listDir (\p -> (".pl" `isSuffixOf` p) || (".pm" `isSuffixOf` p) || (".t" `isSuffixOf` p))  "/home/spek/tmp/otrs" -- "/home/spek/fun/isocode/examples" --  --  -- 
     putStrLn "Parsing..."
     
     matches <- mapM (\name -> ( (name,) <$> matchFile exprs name) ) fileNames

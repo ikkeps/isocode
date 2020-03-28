@@ -1,1 +1,2 @@
-our($Magic)          = q/$1$/;
+'$ArchiveGeneratorTool -a create'
+

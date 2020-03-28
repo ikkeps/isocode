@@ -17,7 +17,7 @@ data Expr = Id B.ByteString    -- abcde
           | Op B.ByteString -- */+/-.<> => ->
           | Var W.Word8 Expr      -- @* / $* / %*
           | Block B.ByteString [Expr] B.ByteString -- {*} / [] / () --FIXME stupid
-          | Sep B.ByteString   -- ; or , 
+          | Sep W.Word8   -- ; or , 
           | Val B.ByteString -- 123.0 / "123abc" / '123abc' / <<EOF..EOF
         deriving (Eq, Show)
         
@@ -41,47 +41,39 @@ anyBracket = choice $ fmap (\(start, end) -> (,end) <$> string start) [
     
 
 parseSep :: Parser Expr
-parseSep = Sep <$> (string ";" <|> string ",")
+parseSep = Sep <$> (chr ';' <|> chr ',')
 
 parseManyExprs :: Parser [Expr]
 parseManyExprs = ignored >> parseExpr `sepBy` ignored <* ignored
 
 parseExpr :: Parser Expr
 parseExpr = choice [
-              parseVal
+              (Val <$> parseQ)
             , parseId
-            , parseVar
-            , parseOp
-            , parseBlock
+            , parseVar -- $...
+            , parseBlock -- [ ], ( )
+            , parseVal -- 1231 "abc"
             , parseSep
+            , (Val <$> hereDocument)
+            , parseOp  -- + / -
             -- FIXME  =smth
-            -- FIXME q qq qw
             -- FIXME regexp - it always goes after op or first statement / after separator
             ]
 
 parseVar = Var <$> varType <*> parseExpr
-    where varType = word8 (BI.c2w '@') <|> word8 (BI.c2w '$') <|> word8 (BI.c2w '%')
+    where varType = chr '@' <|> chr '$' <|> chr '%'
 
 
 isOperator = inClass "-<>=&/\\!.*+?^:|~"
 
 parseOp = do
-    op <- choice [
-          (src regexpMatch)
-        , (src prototype)
-        , (takeWhile1 isOperator)
-        ]
+    op <- src prototype <|> takeWhile1 isOperator
     return $ Op op
     where
         prototype = do --FIXME ?
-            string "("
+            chr '('
             takeWhile1 $ inClass "$&;@\\*[]"
-            string ")"
-        regexpMatch = do
-           (string "=~" <|> string "!~")
-           space
-           option "" (string "m")
-           parseBlock --FIXME hack regular expression :(
+            chr ')'
 
 src p = fst <$> match p
 
@@ -91,18 +83,19 @@ parseId = Id <$> (takeWhile1 $ inClass "a-zA-Z_:")
 anySymbolBracket = anyBracket <|> (satisfy isOperator >>= \w -> return (B.singleton w, B.singleton w))
 
 parseQ = do
-    string "qq" <|> string "qw" <|> string "q"
+    string "qq" <|> string "qw" <|> string "q" <|> string "m"
     (_, end) <- anySymbolBracket
     stringWithEscapesTill end
 
 parseVal :: Parser Expr
 parseVal = do
-    Val <$> (num <|> singleQuotedString <|> doubleQuotedString <|> hereDocument <|> parseQ)
+    Val <$> (num <|> singleQuotedString <|> doubleQuotedString <|> backQuotedString)
     where
         num = src $ takeWhile1 isPartOfNumber
 
 doubleQuotedString = escapedString "\"" "\""
 singleQuotedString = escapedString "\'" "\'"
+backQuotedString = escapedString "`" "`"
 
 hereDocument :: Parser B.ByteString
 hereDocument = do
@@ -135,16 +128,23 @@ parseBlock = do
     return $ Block start exprs end
 
 
+ignored = skipMany (space1 <|> comment)
+
 escapedString :: B.ByteString -> B.ByteString -> Parser B.ByteString
 escapedString begin end = string begin >> stringWithEscapesTill end
       
 stringWithEscapesTill :: B.ByteString -> Parser B.ByteString
 stringWithEscapesTill end = do
-    content <- src $ manyTill anyWord8 (lookAhead (string end) <|> (escapeSeq >> stringWithEscapesTill end))
+    content <- src $ loopInString end
     string end -- FIXME kinda lame
     return content
-
-ignored = skipMany (space1 <|> comment)
+    where 
+        loopInString end = do
+            choice [
+                  (void $ lookAhead $ string end)
+                , (escapeSeq >> loopInString end)
+                , (anyWord8 >> loopInString end)
+                ]
 
 escapeSeq = do
     string "\\"
