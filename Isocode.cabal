@@ -22,7 +22,7 @@ version:             0.1.0.0
 license:             BSD3
 
 -- The file containing the license text.
-license-file:        LICENSE
+-- FIXME license-file:        LICENSE
 
 -- The package author(s).
 author:              Alexander Neganov
@@ -40,7 +40,7 @@ build-type:          Simple
 
 -- Extra files to be distributed with the package, such as examples or a 
 -- README.
-extra-source-files:  ChangeLog.md
+extra-source-files:  README.md -- ChangeLog.md
 
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
