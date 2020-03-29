@@ -1,2 +1,1 @@
-'$ArchiveGeneratorTool -a create'
-
+our $ObjectManagerDisabled = 1

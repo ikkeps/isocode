@@ -10,22 +10,23 @@ import qualified Data.Word as W
 import Control.Applicative
 
 
--- findMatches blob exprs = parseOnly (generateMatcher exprs) blob
+findMatches blob exprs = parseOnly (generateMatcher exprs) blob
 
-findMatches blob exprs = result $ parseFile blob
-    where result (Right given) = if given == exprs then Right [Match blob []] else Right []
-          result (Left err) = Left err
+-- findMatches blob exprs = result $ parseFile blob
+   -- where result (Right given) = if given == exprs then Right [Match blob []] else Right []
+     --     result (Left err) = Left err
 
 generateMatcher :: [Expr] -> Parser [Match]
 generateMatcher exprs = do
     let shouldMatch = generateMany exprs
     ignored
-    let fastForward = skipToFirst (head exprs) -- Small optimization
+    let firstCharsList = firstChars $ head exprs
+    let fastForward = skipToFirst firstCharsList -- Small optimization
     res <- many' $ fastForward >> (matchAndSource shouldMatch <|> (anyWord8 >> return []))
     ignored
     return $ concat res
     where
-        skipToFirst expr = takeTill (== firstChar expr)
+        skipToFirst firstCharsList = takeTill (`elem` firstCharsList)
 
 matchAndSource shouldMatch = do
     (orig, m) <- match shouldMatch
@@ -42,9 +43,9 @@ generate orig@(Var kind _expr) = do
     return [VarName (str2bs $ show orig) (str2bs $ show (Var kind origExpr))] -- Lame mapping
 generate (Val a) = do
     Val orig <- parseVal
-    if orig /= a
-        then return [VarName orig a]
-        else return []
+    if orig == a
+        then return []
+        else fail "Wrong value"
 generate (Block begin exprs end) = do
     string begin
     ignored
@@ -70,12 +71,12 @@ instance Show Match where
     show (Match orig _extracts) = BI.unpackChars orig
 
 
-firstChar :: Expr -> W.Word8
-firstChar (Id a) = B.head a
-firstChar (Op a) = B.head a
-firstChar (Sep a) = a
-firstChar (Var kind _) = kind
-firstChar (Val a) = B.head a
-firstChar (Block begin _ _) = B.head begin
+firstChars :: Expr -> [W.Word8]
+firstChars (Id a) = [B.head a]
+firstChars (Op a) = [B.head a]
+firstChars (Sep a) = [a]
+firstChars (Var kind _) = [kind]
+firstChars (Val a) = (B.head a) : fmap BI.c2w ['"', '\'', 'q', 'm', '`', '<' ] --FIXME m
+firstChars (Block begin _ _) = [B.head begin]
 
 

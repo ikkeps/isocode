@@ -6,11 +6,47 @@ import Text.Pretty.Simple (pPrint)
 
 import System.Directory
 import System.FilePath ((</>))
+import qualified Options.Applicative as Opt
+import Data.Semigroup ((<>))
+import Control.Monad (when)
+import Control.Applicative ((<**>), (<|>))
 import Data.List
 import Data.Maybe (mapMaybe)
 import qualified Data.ByteString as B
 import Parse (parseFile, Expr)
 import Matcher (findMatches, Match)
+import System.Exit (exitSuccess)
+
+
+import qualified Data.ByteString.Internal as BI
+
+
+data Arguments = Arguments
+  { example    :: Either FilePath String
+  , searchDir  :: String
+  , verbose    :: Bool
+  , justParse  :: Bool
+  }
+
+getArguments :: IO Arguments
+getArguments = Opt.execParser commandLineParser
+
+argumentsParser :: Opt.Parser Arguments
+argumentsParser = Arguments
+    <$> (
+            (Left <$> Opt.strArgument (Opt.metavar "EXAMPLE_FILE"))
+        <|> (Right <$> Opt.strOption (Opt.short 'e' <> Opt.long "example" <> Opt.metavar "EXPRESSION"))
+        )
+    <*> Opt.strArgument (Opt.metavar "SEARCH_DIR")
+    <*> Opt.switch (Opt.short 'v' <> Opt.long "verbose" <> Opt.help "spew debug information")
+    <*> Opt.switch (Opt.short 'j' <> Opt.long "just-parse" <> Opt.help "just parse the example, do not search for it")
+
+commandLineParser :: Opt.ParserInfo Arguments
+commandLineParser = Opt.info (argumentsParser <**> Opt.helper)
+  ( Opt.fullDesc
+  <> Opt.progDesc "Searches for code similar to EXAMPLE_FILE or EXPRESSION in SEARCH_DIR"
+  <> Opt.header "isacode - search source tree by Perl code sample" )
+
 
 listDir:: (FilePath -> Bool) -> FilePath -> IO [FilePath]
 listDir fileFilter path = do
@@ -25,17 +61,26 @@ listDir fileFilter path = do
 
 main :: IO ()
 main = do --"/home/spek/tmp/otrs"
-    blob <- B.readFile "/home/spek/tmp/otrs/scripts/test/SupportBundleGenerator.t"  
+
+    args <- getArguments
+    
+    blob <- loadExample $ example args  
+    
+    when (verbose args) $ putStrLn "Parsing..."
+
     let eitherExprs = parseFile blob
 
     exprs <- case eitherExprs of
                   Right exprs -> return exprs
                   Left msg -> fail msg
 
-    pPrint exprs -- putStrLn $ show exprs
+    when (verbose args || justParse args) $ pPrint exprs
+    
+    when (justParse args) $ exitSuccess    
 
-    fileNames <- listDir (\p -> (".pl" `isSuffixOf` p) || (".pm" `isSuffixOf` p) || (".t" `isSuffixOf` p))  "/home/spek/tmp/otrs" -- "/home/spek/fun/isocode/examples" --  --  -- 
-    putStrLn "Parsing..."
+    when (verbose args) $ putStrLn "Scanning..."
+
+    fileNames <- listDir isPerlFileName (searchDir args)
     
     matches <- mapM (\name -> ( (name,) <$> matchFile exprs name) ) fileNames
     
@@ -44,12 +89,14 @@ main = do --"/home/spek/tmp/otrs"
     
     let found = mapMaybe anyMatches matches
     mapM_ (\(name, m) -> putStrLn $ name ++ ":" ++ showMatches m) found
-
+    
     putStrLn $ "Total " ++ show (length found) ++ " files matches"
     putStrLn $ "Total " ++ show (sum $ fmap (length . snd) found) ++ " matches"
     
-    
     where
+        isPerlFileName p = any (`isSuffixOf` p) perlExtensions
+        perlExtensions = [".pl", ".pm", ".t"]
+    
         anyMatches :: (FilePath, Either String [Match]) -> Maybe (FilePath, [Match])
         anyMatches (_, (Right [])) = Nothing
         anyMatches (name, (Right matches)) = Just (name, matches)
@@ -65,4 +112,5 @@ main = do --"/home/spek/tmp/otrs"
             
         showMatches matches = (show $ length matches) ++ "\n" ++ (intercalate "\n----\n" $ fmap show matches)
 
-     
+loadExample (Left path) = B.readFile path
+loadExample (Right source) = return $ BI.packChars source
