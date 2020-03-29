@@ -50,19 +50,19 @@ parseExpr :: Parser Expr
 parseExpr = choice [
               (Val <$> parseQ)
             , parseId
-            , parseVar -- $...
+            , parseVar -- $.. @... \...
             , parseBlock -- [ ], ( )
             , parseVal -- 1231 "abc"
             , parseSep
             , (Val <$> hereDocument)
             , parseOp  -- + / -
+            -- FIXME string interpolation extraction
             -- FIXME  =smth
             -- FIXME regexp - it always goes after op or first statement / after separator
             ]
 
 parseVar = Var <$> varType <*> parseExpr
     where varType = chr '@' <|> chr '$' <|> chr '%'
-
 
 isOperator = inClass "-<>=&/\\!.*+?^:|~"
 

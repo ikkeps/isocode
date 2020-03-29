@@ -16,16 +16,17 @@ import qualified Data.ByteString as B
 import Parse (parseFile, Expr)
 import Matcher (findMatches, Match)
 import System.Exit (exitSuccess)
-
+import Control.Concurrent.Async.Pool (withTaskGroup, mapConcurrently)
 
 import qualified Data.ByteString.Internal as BI
 
 
 data Arguments = Arguments
-  { example    :: Either FilePath String
-  , searchDir  :: String
-  , verbose    :: Bool
-  , justParse  :: Bool
+  { pattern     :: Either FilePath String
+  , searchDir   :: String
+  , verbose     :: Bool
+  , justParse   :: Bool
+  , concurrency :: Int
   }
 
 getArguments :: IO Arguments
@@ -34,37 +35,31 @@ getArguments = Opt.execParser commandLineParser
 argumentsParser :: Opt.Parser Arguments
 argumentsParser = Arguments
     <$> (
-            (Left <$> Opt.strArgument (Opt.metavar "EXAMPLE_FILE"))
-        <|> (Right <$> Opt.strOption (Opt.short 'e' <> Opt.long "example" <> Opt.metavar "EXPRESSION"))
+            (Left <$> Opt.strArgument (Opt.metavar "PATTERN_FILE"))
+        <|> (Right <$> Opt.strOption (Opt.short 'p' <> Opt.long "pattern" <> Opt.metavar "PATTERN"))
         )
     <*> Opt.strArgument (Opt.metavar "SEARCH_DIR")
     <*> Opt.switch (Opt.short 'v' <> Opt.long "verbose" <> Opt.help "spew debug information")
-    <*> Opt.switch (Opt.short 'j' <> Opt.long "just-parse" <> Opt.help "just parse the example, do not search for it")
+    <*> Opt.switch (Opt.short 'd' <> Opt.long "debug-pattern" <> Opt.help "just parse the pattern and show, do not search for it")
+    <*> Opt.option Opt.auto (Opt.short 'j' <> Opt.long "concurrency" <> Opt.value 4 <> Opt.help "How many threads in parallell")
 
 commandLineParser :: Opt.ParserInfo Arguments
 commandLineParser = Opt.info (argumentsParser <**> Opt.helper)
-  ( Opt.fullDesc
-  <> Opt.progDesc "Searches for code similar to EXAMPLE_FILE or EXPRESSION in SEARCH_DIR"
+   ( Opt.fullDesc
+  <> Opt.progDesc "Searches for code similar to PATTERN_FILE or PATTERN in SEARCH_DIR"
   <> Opt.header "isacode - search source tree by Perl code sample" )
 
 
-listDir:: (FilePath -> Bool) -> FilePath -> IO [FilePath]
-listDir fileFilter path = do
-    subdirs <- (fmap (path </>)) <$> listDirectory path
-    concat <$> mapM maybeWalk subdirs
-    where
-        maybeWalk:: FilePath -> IO [FilePath]
-        maybeWalk d = do
-            exists <- doesDirectoryExist d
-            if exists then (listDir fileFilter d) else return $ filter fileFilter [d]
+perlExtensions :: [String]
+perlExtensions = [".pl", ".pm", ".t"]
 
 
 main :: IO ()
-main = do --"/home/spek/tmp/otrs"
+main = do
 
     args <- getArguments
     
-    blob <- loadExample $ example args  
+    blob <- loadPattern $ pattern args  
     
     when (verbose args) $ putStrLn "Parsing..."
 
@@ -80,22 +75,24 @@ main = do --"/home/spek/tmp/otrs"
 
     when (verbose args) $ putStrLn "Scanning..."
 
-    fileNames <- listDir isPerlFileName (searchDir args)
+    allFileNames <- listDir (searchDir args)
     
-    matches <- mapM (\name -> ( (name,) <$> matchFile exprs name) ) fileNames
+    let fileNames = filter isPerlFileName allFileNames
+    
+    matches <- matchFiles (concurrency args) exprs fileNames
     
     let errors = filter isError matches
-    putStrLn $ "Scanned " ++ show (length matches) ++ " files / " ++ show (length errors) ++ " errors"
     
     let found = mapMaybe anyMatches matches
-    mapM_ (\(name, m) -> putStrLn $ name ++ ":" ++ showMatches m) found
+    mapM_ showFileMatches found
     
+    putStrLn $ "Files in directory: " ++ show (length allFileNames)
+    putStrLn $ "Scanned " ++ show (length matches) ++ " files with " ++ show (length errors) ++ " errors"
     putStrLn $ "Total " ++ show (length found) ++ " files matches"
     putStrLn $ "Total " ++ show (sum $ fmap (length . snd) found) ++ " matches"
     
     where
         isPerlFileName p = any (`isSuffixOf` p) perlExtensions
-        perlExtensions = [".pl", ".pm", ".t"]
     
         anyMatches :: (FilePath, Either String [Match]) -> Maybe (FilePath, [Match])
         anyMatches (_, (Right [])) = Nothing
@@ -105,12 +102,35 @@ main = do --"/home/spek/tmp/otrs"
         isError (_, (Left _)) = True
         isError _ = False
 
-        matchFile :: [Expr] -> FilePath -> IO (Either String [Match])
-        matchFile exprs name = do
+matchFiles :: Int -> [Expr] -> [FilePath] -> IO [(FilePath, Either String [Match])]
+matchFiles threadsNum exprs paths = do
+    withTaskGroup threadsNum $ \g -> do
+        mapConcurrently g (matchFile exprs) paths
+
+matchFile :: [Expr] -> FilePath -> IO (FilePath, Either String [Match])
+matchFile exprs name = do
+    matches <- loadAndMatch exprs name
+    return (name, matches)
+    where
+        loadAndMatch exprs name = do
             blob <- B.readFile name
             return $ findMatches blob exprs
-            
-        showMatches matches = (show $ length matches) ++ "\n" ++ (intercalate "\n----\n" $ fmap show matches)
 
-loadExample (Left path) = B.readFile path
-loadExample (Right source) = return $ BI.packChars source
+loadPattern (Left path) = B.readFile path
+loadPattern (Right source) = return $ BI.packChars source
+
+showFileMatches :: (FilePath, [Match]) -> IO ()
+showFileMatches (path, matches) = putStrLn $ path ++ ":" ++ showMatches
+    where
+        showMatches = (show $ length matches) ++ "\n" ++ (intercalate "\n----\n" $ fmap show matches)
+
+listDir:: FilePath -> IO [FilePath]
+listDir path = do
+    subdirs <- (fmap (path </>)) <$> listDirectory path
+    concat <$> mapM maybeWalk subdirs
+    where
+        maybeWalk:: FilePath -> IO [FilePath]
+        maybeWalk d = do
+            exists <- doesDirectoryExist d
+            if exists then (listDir d) else return [d]
+

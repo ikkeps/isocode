@@ -1,1 +1,3 @@
-our $ObjectManagerDisabled = 1
+my $ID           = $FormDraftCase->{Fields}->{$FieldValue}->{ID};
+my $UpdatedValue = $FormDraftCase->{Fields}->{$FieldValue}->{Update};
+

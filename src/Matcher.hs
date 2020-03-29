@@ -8,12 +8,12 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
 import qualified Data.Word as W
 import Control.Applicative
-
+import qualified Data.Set as Set
 
 findMatches blob exprs = parseOnly (generateMatcher exprs) blob
 
 -- findMatches blob exprs = result $ parseFile blob
-   -- where result (Right given) = if given == exprs then Right [Match blob []] else Right []
+   --  where result (Right given) = if given == exprs then Right [Match blob []] else Right []
      --     result (Left err) = Left err
 
 generateMatcher :: [Expr] -> Parser [Match]
@@ -30,9 +30,19 @@ generateMatcher exprs = do
 
 matchAndSource shouldMatch = do
     (orig, m) <- match shouldMatch
-    return [Match orig m]
+    --FIXME - match variables
+    --FIXME (unique (mapping))
+    --FIXME (unique (fst) &7 unique (snd))
+    if isMappingOk m
+        then return [Match orig m]
+        else return []
 
- 
+isMappingOk :: [Extract] -> Bool
+isMappingOk extracts = isAllDifferrent (fmap fst uniq) && isAllDifferrent (fmap snd uniq)
+    where
+        isAllDifferrent items = Set.size (Set.fromList items) == length items  
+        uniq = Set.toList $ Set.fromList $ fmap (\(VarName a b) -> (a,b)) extracts
+
 generate :: Expr -> Parser [Extract]
 generate (Id a) = string a >> return []
 generate (Op a) = string a >> return []
@@ -66,10 +76,8 @@ data Extract = VarName B.ByteString B.ByteString
     
 data Match = Match B.ByteString [Extract]
 
-
 instance Show Match where
     show (Match orig _extracts) = BI.unpackChars orig
-
 
 firstChars :: Expr -> [W.Word8]
 firstChars (Id a) = [B.head a]
