@@ -6,11 +6,11 @@ Rules of matching:
 
 * Ignore the differrence between ways of writing literal values: e.g. ` "abc" ` == `q(abc)`. Even `"123"` == `123`
 * Variable names can be differrent, but must be consistent: `$a + $a` == `$b + b`, but `$a + $b` != `$c + $c`
-* Whitespace / newlines are ignored
+* Whitespace, newlines and comments are ignored.
 
 ## Usage
 
-You can give it file or string as a pattern. Also, see `--help`
+You can give it file or string as a pattern. Also, see `--help`.
 
 ```
 # isocode -v -p '$abcd + $def' ~/tmp/otrs/ 
@@ -57,7 +57,7 @@ cabal install
 
 ## How it works
 
-'Only Perl can parse Perl', but we only need to understand code at very basic level (is it var? is it string literal?).
+'Only Perl can parse Perl', but we only need to understand perl code at very basic level (is it var? is it string literal?).
 
 1. Parse example code to simple AST
 2. Given that AST, generate parser which search and parses _only_ similar code
@@ -66,14 +66,16 @@ cabal install
 
 Search is done by naive algorithm with simple optimization:
 
-1. get list of first characters that example can start with (e.g. `['u']` for `use` or `['"', 'q', '\'' ]` for `"string"` 
+1. get list of first characters that code can start with (e.g. `['u']` for `use` or `['"', 'q', '\'' ... ]` for `"string"` 
 2. Find next occurrence of one of this characters
 3. Run parser from this position
 4. If fail - go to 2
 
 Its faster than parsing whole source, but stil may be slow for common characters.
 
-So, basically code is three parser generators (one for command line arguments) stiched together.
+Files are loaded and parsed concurrently, but it doesn help much :)
+
+TLDR: Basically, its three parser generators (one for command line arguments) stiched together.
 
 ## What doesn't work
 
@@ -89,6 +91,7 @@ So, basically code is three parser generators (one for command line arguments) s
 - [ ] reference (`\`) is not treated in special way, it's just like any other operator
 - [ ] all variables treated as they are in same namespace (e.g. blocks are not taken into account)
 - [ ] some minor FIXMEs in code
+- [ ] concurrency has some problems (e.g. threads are starving)
 
 ## TODO
 
