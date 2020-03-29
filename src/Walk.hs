@@ -84,6 +84,7 @@ main = do
     let errors = filter isError matches
     
     let found = mapMaybe anyMatches matches
+
     mapM_ showFileMatches found
     
     putStrLn $ "Files in directory: " ++ show (length allFileNames)

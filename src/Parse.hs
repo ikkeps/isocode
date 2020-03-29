@@ -79,8 +79,9 @@ src p = fst <$> match p
 
 parseId = Id <$> (takeWhile1 $ inClass "a-zA-Z_:")
 
+canBeBracket w = isOperator w || inClass "@" w
 
-anySymbolBracket = anyBracket <|> (satisfy isOperator >>= \w -> return (B.singleton w, B.singleton w))
+anySymbolBracket = anyBracket <|> (satisfy canBeBracket >>= \w -> return (B.singleton w, B.singleton w))
 
 parseQ = do
     string "qq" <|> string "qw" <|> string "q" <|> string "m"
