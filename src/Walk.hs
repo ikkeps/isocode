@@ -47,7 +47,7 @@ commandLineParser :: Opt.ParserInfo Arguments
 commandLineParser = Opt.info (argumentsParser <**> Opt.helper)
    ( Opt.fullDesc
   <> Opt.progDesc "Searches for code similar to PATTERN_FILE or PATTERN in SEARCH_DIR"
-  <> Opt.header "isacode - search source tree by Perl code sample" )
+  <> Opt.header "isocode - search source tree by Perl code sample" )
 
 
 perlExtensions :: [String]

@@ -49,10 +49,20 @@ You need `ghc` haskell compiller (I used v 8.0.2). + `cabal`.
 You can get those from, e.g. `haskell-platform` packet in Ubuntu. 
 
 ```
-cabal sandbox init
-cabal install
+# cabal sandbox init
+# cabal install
+# ./dist/build/isocode/isocode --help
+isocode - search source tree by Perl code sample
 
-./dist/build/isocode/isocode --help
+Usage: isocode (PATTERN_FILE | (-p|--pattern PATTERN)) SEARCH_DIR [-v|--verbose]
+               [-d|--debug-pattern] [-j|--concurrency ARG]
+  Searches for code similar to PATTERN_FILE or PATTERN in SEARCH_DIR
+
+Available options:
+  -v,--verbose             spew debug information
+  -d,--debug-pattern       just parse the pattern and show, do not search for it
+  -j,--concurrency ARG     How many threads in parallell
+  -h,--help                Show this help text
 ```
 
 ## How it works
@@ -84,7 +94,7 @@ TLDR: Basically, its three parser generators (one for command line arguments) st
 - [ ] line numbers in matching 
 - [ ] variable interpolation in strings, like `"show me $var"` treated as regular strings
 - [ ] `=cut` documentation parsing
-- [ ] regular expressions - only `m/.../` form is (kind of) supported, because it much more context-sesitive
+- [ ] regular expressions - only `m/.../` form is (kind of) supported, regexp parsing it much more context-sesitive
 - [ ] `qw` works same way as `qq`
 - [ ] no differrence between double and single quotes
 - [ ] `;` and `,` must be present in same places.
