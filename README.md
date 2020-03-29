@@ -45,6 +45,9 @@ For fun. Maybe it will help someone.
 
 ## Build and run
 
+You need `ghc` haskell compiller (I used v 8.0.2). + `cabal`.
+You can get those from, e.g. `haskell-platform` packet in Ubuntu. 
+
 ```
 cabal sandbox init
 cabal install
