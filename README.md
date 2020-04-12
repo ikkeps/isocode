@@ -92,10 +92,10 @@ TLDR: Basically, its three parser generators (one for command line arguments) st
 - [ ] error messages are really bad
 - [ ] line numbers in matching 
 - [ ] variable interpolation in strings, like `"show me $var"` treated as regular strings
-- [ ] `=cut` documentation parsing
+- [ ] `=cut` documentation parsing, but it should not affect search
 - [ ] regular expressions - only `m/.../` form is (kind of) supported, regexp parsing it much more context-sesitive
 - [ ] `qw` works same way as `qq`
-- [ ] no differrence between double and single quotes
+- [x] no differrence between double and single quotes
 - [ ] `;` and `,` must be present in same places.
 - [ ] reference (`\`) is not treated in special way, it's just like any other operator
 - [ ] all variables treated as they are in same namespace (e.g. blocks are not taken into account)

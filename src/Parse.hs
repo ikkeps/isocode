@@ -7,10 +7,8 @@ module Parse where
 import Control.Applicative
 import qualified Data.Word as W
 import Data.Attoparsec.ByteString
-import Data.Attoparsec.Combinator (lookAhead)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
-import Control.Monad (void)
 
 
 data Expr = Id B.ByteString    -- abcde
@@ -38,7 +36,6 @@ anyBracket = choice $ fmap (\(start, end) -> (,end) <$> string start) [
         , ("[", "]")
         , ("{", "}")
     ]
-    
 
 parseSep :: Parser Expr
 parseSep = Sep <$> (chr ';' <|> chr ',')
@@ -48,13 +45,13 @@ parseManyExprs = ignored >> parseExpr `sepBy` ignored <* ignored
 
 parseExpr :: Parser Expr
 parseExpr = choice [
-              (Val <$> parseQ)
+              parseQ
             , parseId
             , parseVar -- $.. @... \...
             , parseBlock -- [ ], ( )
             , parseVal -- 1231 "abc"
             , parseSep
-            , (Val <$> hereDocument)
+            , hereDocument
             , parseOp  -- + / -
             -- FIXME string interpolation extraction
             -- FIXME  =smth
@@ -83,10 +80,20 @@ canBeBracket w = isOperator w || inClass "@" w
 
 anySymbolBracket = anyBracket <|> (satisfy canBeBracket >>= \w -> return (B.singleton w, B.singleton w))
 
-parseQ = do
-    string "qq" <|> string "qw" <|> string "q" <|> string "m"
-    (_, end) <- anySymbolBracket
-    stringWithEscapesTill end
+parseQ = choice [
+        "qq" `quotedWith` fullEscapeSeq,
+        "qw" `quotedWith` fullEscapeSeq,
+        (chr 'q' >> quoteBrackets),
+        (chr 'm' >> quoteBrackets)
+        ]
+    where
+        quotedWith prefix esc = do
+            string prefix
+            (_, end) <- anySymbolBracket
+            Val <$> stringWithEscapesTill esc end
+        quoteBrackets = do
+            (begin, end) <- anySymbolBracket
+            Val <$> stringWithEscapesTill (escapeOnly [B.head begin, B.head end]) end
 
 parseVal :: Parser Expr
 parseVal = do
@@ -94,18 +101,25 @@ parseVal = do
     where
         num = src $ takeWhile1 isPartOfNumber
 
-doubleQuotedString = escapedString "\"" "\""
-singleQuotedString = escapedString "\'" "\'"
-backQuotedString = escapedString "`" "`"
+doubleQuotedString = escapedString "\"" fullEscapeSeq "\""
+singleQuotedString = escapedString "\'" (escapeOnly [BI.c2w '\'']) "\'"
+backQuotedString = escapedString "`" fullEscapeSeq "`" -- FIXME ???
 
-hereDocument :: Parser B.ByteString
+hereDocument :: Parser Expr
 hereDocument = do
     string "<<"
-    marker <- (parseId >>= \(Id marker) -> return marker) <|> singleQuotedString <|> doubleQuotedString  -- FIXME what is difference between " and '?
-    ignored
-    chr ';'
-    ignored
-    stringWithEscapesTill marker
+    (marker, esc) <- choice [
+        noQuotes,
+        ( (, fail "") <$> singleQuotedString),
+        ( (, fullEscapeSeq) <$> doubleQuotedString)
+        ]
+    space >> chr ';' >> space
+    result <- stringWithEscapesTill esc $ B.concat ["\n", marker, "\n"] -- FIXME: SHOULD END EITHER WITH NL OR EOF :(
+    return $ Val $ B.concat [result, "\n"] -- Returning \n :(
+    where
+        noQuotes = do
+            Id marker <- parseId
+            return $ (marker, fullEscapeSeq)
 
 chr c = word8 $ BI.c2w c
 
@@ -132,32 +146,34 @@ parseBlock = do
     string end
     return $ Block start exprs end
 
-
 ignored = skipMany (space1 <|> comment)
 
-escapedString :: B.ByteString -> B.ByteString -> Parser B.ByteString
-escapedString begin end = string begin >> stringWithEscapesTill end
+escapedString :: B.ByteString -> Parser W.Word8 -> B.ByteString -> Parser B.ByteString
+escapedString begin escapeSeq end = string begin >> stringWithEscapesTill escapeSeq end
       
-stringWithEscapesTill :: B.ByteString -> Parser B.ByteString
-stringWithEscapesTill end = do
-    content <- src $ loopInString end
-    string end -- FIXME kinda lame
-    return content
+stringWithEscapesTill :: Parser W.Word8 -> B.ByteString -> Parser B.ByteString
+stringWithEscapesTill escapeSeq end = scan
     where 
-        loopInString end = do
+        scan = do
             choice [
-                  (void $ lookAhead $ string end)
-                , (escapeSeq >> loopInString end)
-                , (anyWord8 >> loopInString end)
+                  (string end >> return "")
+                , (B.cons <$> escapeSeq <*> scan) --SLOOW
+                , (B.cons <$> anyWord8 <*> scan) --SLOOW
                 ]
 
-escapeSeq = do
+fullEscapeSeq :: Parser W.Word8
+fullEscapeSeq = do
     string "\\"
     choice [
-        ((string "x" <|> string "0") >> count 2 (satisfy $ inClass "0-9") >> return ())
-      , (string "c" >> anyWord8 >> return ())
-      , void anyWord8 -- dont care about others escaped values
+        ((string "x" <|> string "0") >> count 2 (satisfy $ inClass "0-9") >> return 123) -- FIXME
+      , (string "c" >> anyWord8)
+      , anyWord8 -- dont care about others escaped values
         ]
+
+escapeOnly :: [W.Word8] -> Parser W.Word8
+escapeOnly symbols = do
+    chr '\\'
+    satisfy (\w -> elem w symbols)
 
 parseWhole :: Parser [Expr]
 parseWhole = do

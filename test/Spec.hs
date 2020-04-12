@@ -36,15 +36,18 @@ someExprs = describe "expressions" $ do
             Sep 59
           ] "}"
         ]
-    isMany " my ($a,$b) = ()" [
+
+    isMany " my ( $a, %b ) = ();" [
         Id "my",
         Block "(" [
             Var 36 (Id "a"),
             Sep 44,
-            Var 36 (Id "b")
+            Var 37 (Id "b")
           ] ")",
         Op "=",
-        Block "(" [] ")"]
+        Block "(" [] ")",
+        Sep 59
+        ]
 
 
 ids = describe "ids" $ do
@@ -78,22 +81,42 @@ regexps = describe "regexps" $ do
 values = describe "values" $ do
     describe "single quotes" $ do
         is "'works'" $ Val "works"
-        is " 'wor\\\'ks' " $ Val "wor\\\'ks" -- FIXME unqoute stuff?
+        is " 'wor\\'ks' " $ Val "wor'ks"
+        is " 'wor\\nks' " $ Val "wor\\nks"
+        is " 'wor\\ks' " $ Val "wor\\ks"
         is " '' " $ Val ""
 
     describe "double quotes" $ do
+        is " '' " $ Val ""
         is  " \"works\" " $ Val "works"
-        is " \"wo\\\"rks\" " $ Val "wo\\\"rks" --FIXME unquote parse?
+        is " \"wo\\\"rks\" " $ Val "wo\"rks"
+ -- FIXME it should be newline :(        is " \"wo\\nks\" " $ Val "wo\nks"
+        is " \"wo\\\\ks\" " $ Val "wo\\ks"
         is " \"\" " $ Val ""
-
-    describe "qq" $ do
+    describe "q" $ do
         is "q//" $ Val ""
         is "q( abc )" $ Val " abc "
-        is "qq( abc )" $ Val " abc "
-        is "qq[ abc ]" $ Val " abc " --FIXME q/qq diff?
+        is "q( ab\\(c\\) )" $ Val " ab(c) "
+        is "q( ab\\nc\\ )" $ Val " ab\\nc\\ "
 
+    describe "qq" $ do
+        is "qq( abc )" $ Val " abc "
+        is "qq( a\\)bc )" $ Val " a)bc "
+        is "qq( \\(a\\)bc )" $ Val " (a)bc "
+        is "qq( ab\\nc )" $ Val " abnc " --FIXME newline
+        is "qq[ abc ]" $ Val " abc "
+    describe "qw" $ do
+        return ()
 -- FIXME    is "qw( ab cd )" $ Block "(" [FIXME] ")"
--- FIXME newline   is "<<SQL;\nabc\nSQL" $ Val "abc" 
+
+    describe "here document" $ do -- Note: newline is part of value in perl
+--- FIXME EOF on marker does not work        is "<<SQL;\nabc\nSQL" $ Val "abc\n"  -- should fail
+        is "<<SQL;\nabc\nSQL\n" $ Val "abc\n"
+        is "<<'SQL';\nabc\nSQL\n" $ Val "abc\n"
+        is "<<'SQL';\na\\nbc\nSQL\n" $ Val "a\\nbc\n"
+        is "<<\"SQL\";\nabc\nSQL\n" $ Val "abc\n"
+        is "<<\"SQL\";\na\\nbc\nSQL\n" $ Val "anbc\n"
+
     describe "numbers" $ do
         is "1234" $ Val "1234"
         is "0b1110011" $ Val "0b1110011"
@@ -109,6 +132,7 @@ ops = describe "ops" $ do
     is " + " $ Op "+"
     is " << " $ Op "<<"
     isMany "a ? b : c" [ Id "a", Op "?", Id "b", Op ":", Id "c" ] 
+    isMany "a==b" [Id "a", Op "==", Id "b"]
     -- FIXME more
 
 blocks = describe "blocks" $ do
