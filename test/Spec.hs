@@ -65,6 +65,8 @@ vars = describe "vars" $ do
         is " %abc " $ Var 37 (Id "abc")
         is " %$abc " $ Var 37 (Var 36 (Id "abc"))
         is " $$abc " $ Var 36 (Var 36 (Id "abc"))
+    describe "ref is just operator" $ do
+        isMany "\\$abc" [ Op "\\", Var 36 (Id "abc") ] 
 
 
 regexps = describe "regexps" $ do

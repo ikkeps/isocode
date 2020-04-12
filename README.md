@@ -89,7 +89,7 @@ TLDR: Basically, its three parser generators (one for command line arguments) st
 
 ## What doesn't work
 
-- [ ] tests - there are none yet.
+- [x] tests (more needed).
 - [ ] error messages are really bad
 - [ ] line numbers in matching 
 - [ ] variable interpolation in strings, like `"show me $var"` treated as regular strings
