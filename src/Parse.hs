@@ -77,7 +77,7 @@ parseOp = do
 
 src p = fst <$> match p
 
-parseId = Id <$> (takeWhile1 $ inClass "a-zA-Z_:")
+parseId = Id <$> ( src $ (takeWhile1 $ inClass "a-zA-Z_") `sepBy1` (string "::"))
 
 canBeBracket w = isOperator w || inClass "@" w
 
@@ -109,7 +109,11 @@ hereDocument = do
 
 chr c = word8 $ BI.c2w c
 
-isPartOfNumber w = isDigit w || w == 0x2e 
+isPartOfNumber w = isDigit w
+    || w == (BI.c2w '.')
+    || w == (BI.c2w 'b')
+    || w == (BI.c2w 'e')
+    || w == (BI.c2w 'x')
 
 isDigit w = w >= 0x30 && w <=0x39
 
