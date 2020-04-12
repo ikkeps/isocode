@@ -49,8 +49,7 @@ You need `ghc` haskell compiller (I used v 8.0.2). + `cabal`.
 You can get those from, e.g. `haskell-platform` packet in Ubuntu. 
 
 ```
-# cabal sandbox init
-# cabal install
+# make build
 # ./dist/build/isocode/isocode --help
 isocode - search source tree by Perl code sample
 
