@@ -86,25 +86,6 @@ Files are loaded and parsed concurrently, but it doesn help much :)
 
 TLDR: Basically, its three parser generators (one for command line arguments) stiched together.
 
-## What doesn't work
+## What doesn't work and TODO
 
-- [x] tests (more needed).
-- [ ] error messages are really bad
-- [ ] line numbers in matching 
-- [ ] variable interpolation in strings, like `"show me $var"` treated as regular strings
-- [ ] `=cut` documentation parsing, but it should not affect search
-- [ ] regular expressions - only `m/.../` form is (kind of) supported, regexp parsing it much more context-sesitive
-- [ ] `qw` works same way as `qq`
-- [x] no differrence between double and single quotes
-- [ ] `;` and `,` must be present in same places.
-- [ ] reference (`\`) is not treated in special way, it's just like any other operator
-- [ ] all variables treated as they are in same namespace (e.g. blocks are not taken into account)
-- [ ] some minor FIXMEs in code
-- [ ] concurrency has some problems (e.g. threads are starving)
-
-## TODO
-
-- [ ] special markers to match any sequence, similar to `.*` or `.+` in regexps, e.g. `if ($a == $b){ .* } else {print "error"}`
-- [ ] support for code generation based on matches
-
-
+See Issues tab on github.
