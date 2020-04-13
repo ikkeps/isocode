@@ -89,10 +89,14 @@ values = describe "values" $ do
     describe "double quotes" $ do
         is " '' " $ Val ""
         is  " \"works\" " $ Val "works"
+        is  " \"wo\\x21rks\" " $ Val "wo!rks"
+        is  " \"wo\\041rks\" " $ Val "wo!rks"
+        is  " \"wo\\c#rks\" " $ Val "wo#rks"
         is " \"wo\\\"rks\" " $ Val "wo\"rks"
- -- FIXME it should be newline :(        is " \"wo\\nks\" " $ Val "wo\nks"
+        is " \"wo\\nks\" " $ Val "wo\nks"
         is " \"wo\\\\ks\" " $ Val "wo\\ks"
         is " \"\" " $ Val ""
+
     describe "q" $ do
         is "q//" $ Val ""
         is "q( abc )" $ Val " abc "
@@ -103,7 +107,7 @@ values = describe "values" $ do
         is "qq( abc )" $ Val " abc "
         is "qq( a\\)bc )" $ Val " a)bc "
         is "qq( \\(a\\)bc )" $ Val " (a)bc "
-        is "qq( ab\\nc )" $ Val " abnc " --FIXME newline
+        is "qq( ab\\nc )" $ Val " ab\nc "
         is "qq[ abc ]" $ Val " abc "
     describe "qw" $ do
         return ()
@@ -115,7 +119,7 @@ values = describe "values" $ do
         is "<<'SQL';\nabc\nSQL\n" $ Val "abc\n"
         is "<<'SQL';\na\\nbc\nSQL\n" $ Val "a\\nbc\n"
         is "<<\"SQL\";\nabc\nSQL\n" $ Val "abc\n"
-        is "<<\"SQL\";\na\\nbc\nSQL\n" $ Val "anbc\n"
+        is "<<\"SQL\";\na\\nbc\nSQL\n" $ Val "a\nbc\n"
 
     describe "numbers" $ do
         is "1234" $ Val "1234"

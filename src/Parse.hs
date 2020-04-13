@@ -9,6 +9,7 @@ import qualified Data.Word as W
 import Data.Attoparsec.ByteString
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
+import Numeric (readHex, readOct)
 
 
 data Expr = Id B.ByteString    -- abcde
@@ -157,18 +158,40 @@ stringWithEscapesTill escapeSeq end = scan
         scan = do
             choice [
                   (string end >> return "")
-                , (B.cons <$> escapeSeq <*> scan) --SLOOW
-                , (B.cons <$> anyWord8 <*> scan) --SLOOW
+                , (B.cons <$> escapeSeq <*> scan) -- FIXME SLOOW
+                , (B.cons <$> anyWord8 <*> scan) -- FIXME SLOOW
                 ]
 
 fullEscapeSeq :: Parser W.Word8
 fullEscapeSeq = do
-    string "\\"
+    chr '\\'
     choice [
-        ((string "x" <|> string "0") >> count 2 (satisfy $ inClass "0-9") >> return 123) -- FIXME
+        controlCode
       , (string "c" >> anyWord8)
-      , anyWord8 -- dont care about others escaped values
-        ]
+      , hexCode
+      , octCode
+      , anyWord8 -- We are not really care here
+      ]
+    where
+        controlCode = choice $ fmap (\(char, code) -> chr char >> return (BI.c2w code) ) [
+            ('a', '\a'),
+            ('b', '\b'),
+            ('f', '\f'),
+            ('n', '\n'),
+            ('r', '\r'),
+            ('t', '\t'),
+            ('v', '\v')
+            ]
+        hexCode = do
+            chr 'x'
+            bs <- src $ count 2 (satisfy $ inClass "0-9a-f")
+            let [(code, "")] = readHex $ BI.unpackChars bs 
+            return code
+        octCode = do
+            chr '0'
+            bs <- src $ count 2 (satisfy $ inClass "0-7")
+            let [(code, "")] = readOct $ BI.unpackChars bs 
+            return code
 
 escapeOnly :: [W.Word8] -> Parser W.Word8
 escapeOnly symbols = do
@@ -187,4 +210,3 @@ parseFile source = parseOnly parseWhole source
 justErrorLine = do
     lines <- count 4 $ manyTill anyWord8 (string "\n" <|> (endOfInput >> return ""))
     fail $ show $ fmap (BI.unpackChars . B.pack) lines
-
