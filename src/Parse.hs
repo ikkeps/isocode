@@ -15,8 +15,8 @@ import Numeric (readHex, readOct)
 data Expr = Id B.ByteString    -- abcde
           | Op B.ByteString -- */+/-.<> => ->
           | Var W.Word8 Expr      -- @* / $* / %*
-          | Block B.ByteString [Expr] B.ByteString -- {*} / [] / () --FIXME stupid
-          | Sep W.Word8   -- ; or , 
+          | Block B.ByteString [Expr] B.ByteString -- {*} / [] / ()
+          | Sep W.Word8   -- ; or ,
           | Val B.ByteString -- 123.0 / "123abc" / '123abc' / <<EOF..EOF
         deriving (Eq, Show)
         
@@ -54,9 +54,10 @@ parseExpr = choice [
             , parseSep
             , hereDocument
             , parseOp  -- + / -
+            , parsePrototype -- ($$@$) kind of stuff
             -- FIXME string interpolation extraction
             -- FIXME  =smth
-            -- FIXME regexp - it always goes after op or first statement / after separator
+            -- FIXME regexp - it always goes after =~ op or first statement after separator
             ]
 
 parseVar = Var <$> varType <*> parseExpr
@@ -64,14 +65,11 @@ parseVar = Var <$> varType <*> parseExpr
 
 isOperator = inClass "-<>=&/\\!.*+?^:|~"
 
-parseOp = do
-    op <- src prototype <|> takeWhile1 isOperator
-    return $ Op op
-    where
-        prototype = do --FIXME ?
-            chr '('
-            takeWhile1 $ inClass "$&;@\\*[]"
-            chr ')'
+parseOp = Op <$> takeWhile1 isOperator
+
+parsePrototype = do
+    raw <- src $ chr '(' >> takeWhile1 (inClass "$&;@\\*[]%") >> chr ')'
+    return $ Op raw
 
 src p = fst <$> match p
 
@@ -82,17 +80,18 @@ canBeBracket w = isOperator w || inClass "@" w
 anySymbolBracket = anyBracket <|> (satisfy canBeBracket >>= \w -> return (B.singleton w, B.singleton w))
 
 parseQ = choice [
-        "qq" `quotedWith` fullEscapeSeq,
-        "qw" `quotedWith` fullEscapeSeq,
-        (chr 'q' >> quoteBrackets),
-        (chr 'm' >> quoteBrackets)
+        fullyEscaped "qq",
+        fullyEscaped "qw",
+        quoteBrackets 'q',
+        quoteBrackets 'm' -- FIXME this is quickfix
         ]
     where
-        quotedWith prefix esc = do
+        fullyEscaped prefix = do
             string prefix
             (_, end) <- anySymbolBracket
-            Val <$> stringWithEscapesTill esc end
-        quoteBrackets = do
+            Val <$> stringWithEscapesTill fullEscapeSeq end
+        quoteBrackets prefix = do
+            chr prefix
             (begin, end) <- anySymbolBracket
             Val <$> stringWithEscapesTill (escapeOnly [B.head begin, B.head end]) end
 
@@ -104,7 +103,7 @@ parseVal = do
 
 doubleQuotedString = escapedString "\"" fullEscapeSeq "\""
 singleQuotedString = escapedString "\'" (escapeOnly [BI.c2w '\'']) "\'"
-backQuotedString = escapedString "`" fullEscapeSeq "`" -- FIXME ???
+backQuotedString = escapedString "`" fullEscapeSeq "`"
 
 hereDocument :: Parser Expr
 hereDocument = do

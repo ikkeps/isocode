@@ -2,8 +2,7 @@
 
 import           Test.Hspec
 
-import qualified Data.ByteString as B
-import Data.String
+import Data.String (fromString)
 import Parse
 
 main :: IO ()
@@ -74,7 +73,8 @@ vars = describe "vars" $ do
 
 regexps = describe "regexps" $ do
     is "m/k.e.k/" $ Val "k.e.k"
---FIXME    is "=~ /k.e.k/" $ Val "k.e.k"
+--FIXME    is " =~ /k.e.k/ " $ Val "k.e.k"
+--FIXME    is " m/k.e.k/abc " $ Val "k.e.k"
     is "m//" $ Val ""
 
 
