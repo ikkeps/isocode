@@ -1,4 +1,5 @@
 # Isocode
+![](https://github.com/ikkeps/isocode/workflows/Haskell%20CI/badge.svg)
 
 Search Perl 5 sources by given code example.
 
