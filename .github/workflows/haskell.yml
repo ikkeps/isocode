@@ -27,11 +27,3 @@ jobs:
         cabal build
     - name: Run tests
       run: cabal test
-
-    - name: Create a Release
-      uses: elgohr/Github-Release-Action@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-      with:
-        args: automatic
-
