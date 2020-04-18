@@ -27,3 +27,9 @@ jobs:
         cabal build
     - name: Run tests
       run: cabal test
+    - name: Upload the artifacts
+      uses: skx/github-action-publish-binaries@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+          args: 'dist/build/isocode/isocode'
