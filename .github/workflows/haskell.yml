@@ -27,9 +27,11 @@ jobs:
         cabal build
     - name: Run tests
       run: cabal test
-    - name: Upload the artifacts
-      uses: skx/github-action-publish-binaries@master
+
+    - name: Create a Release
+      uses: elgohr/Github-Release-Action@master
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
       with:
-          args: 'isocode'
+        args: automatic
+
