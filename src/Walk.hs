@@ -14,7 +14,7 @@ import Data.List
 import Data.Maybe (mapMaybe)
 import qualified Data.ByteString as B
 import Parse (parseFile, Expr)
-import Matcher (findMatches, Match)
+import Matcher (findMatches, Match(..))
 import System.Exit (exitSuccess)
 import Control.Concurrent.Async.Pool (withTaskGroup, mapConcurrently)
 
@@ -27,6 +27,7 @@ data Arguments = Arguments
   , verbose     :: Bool
   , justParse   :: Bool
   , concurrency :: Int
+  , fileNamesOnly :: Bool
   }
 
 getArguments :: IO Arguments
@@ -42,6 +43,7 @@ argumentsParser = Arguments
     <*> Opt.switch (Opt.short 'v' <> Opt.long "verbose" <> Opt.help "spew debug information")
     <*> Opt.switch (Opt.short 'd' <> Opt.long "debug-pattern" <> Opt.help "just parse the pattern and show, do not search for it")
     <*> Opt.option Opt.auto (Opt.short 'j' <> Opt.long "concurrency" <> Opt.value 4 <> Opt.help "How many threads in parallell")
+    <*> Opt.switch (Opt.short 'o' <> Opt.long "filename-only" <> Opt.help "Show only filenames")
 
 commandLineParser :: Opt.ParserInfo Arguments
 commandLineParser = Opt.info (argumentsParser <**> Opt.helper)
@@ -67,12 +69,10 @@ main = do
 
     exprs <- case eitherExprs of
                   Right exprs -> return exprs
-                  Left msg -> fail msg
+                  Left msg -> fail msg --FIXME proper message
 
     when (verbose args || justParse args) $ pPrint exprs
-    
-    when (justParse args) $ exitSuccess    
-
+    when (justParse args) $ exitSuccess
     when (verbose args) $ putStrLn "Scanning..."
 
     allFileNames <- listDir (searchDir args)
@@ -81,17 +81,14 @@ main = do
     
     matches <- matchFiles (concurrency args) exprs fileNames
     
-    let errors = filter isError matches
-    
     let found = mapMaybe anyMatches matches
 
-    mapM_ showFileMatches found
-    
-    putStrLn $ "Files in directory: " ++ show (length allFileNames)
-    putStrLn $ "Scanned " ++ show (length matches) ++ " files with " ++ show (length errors) ++ " errors"
-    putStrLn $ "Total " ++ show (length found) ++ " files matches"
-    putStrLn $ "Total " ++ show (sum $ fmap (length . snd) found) ++ " matches"
-    
+    if fileNamesOnly args then
+        showMatchingFilePaths found
+    else do
+        mapM_ showFileMatches found 
+        showStats allFileNames matches found
+
     where
         isPerlFileName p = any (`isSuffixOf` p) perlExtensions
     
@@ -100,6 +97,14 @@ main = do
         anyMatches (name, (Right matches)) = Just (name, matches)
         anyMatches (_, (Left _)) = Nothing
 
+showStats :: [FilePath] -> [(FilePath, Either String [Match])] -> [(FilePath, [Match])] -> IO ()
+showStats allFileNames matches found = do  
+    let errors = filter isError matches
+    putStrLn $ "Files in directory: " ++ show (length allFileNames)
+    putStrLn $ "Scanned " ++ show (length matches) ++ " files with " ++ show (length errors) ++ " errors"
+    putStrLn $ "Total " ++ show (length found) ++ " files matches"
+    putStrLn $ "Total " ++ show (sum $ fmap (length . snd) found) ++ " matches"
+    where
         isError (_, (Left _)) = True
         isError _ = False
 
@@ -121,10 +126,10 @@ loadPattern (Left path) = B.readFile path
 loadPattern (Right source) = return $ BI.packChars source
 
 showFileMatches :: (FilePath, [Match]) -> IO ()
-showFileMatches (path, matches) = putStrLn $ path ++ ":" ++ showMatches
+showFileMatches (path, matches) = mapM_ (putStrLn . showMatch) matches
     where
-        showMatches = (show $ length matches) ++ "\n" ++ (intercalate "\n----\n" $ fmap show matches)
-
+        showMatch (Match orig ((line, pos), _) _extract) = path ++ ":" ++ show (line+1) ++ ":" ++ show (pos+1) ++ "\n" ++ BI.unpackChars orig
+            
 listDir:: FilePath -> IO [FilePath]
 listDir path = do
     subdirs <- (fmap (path </>)) <$> listDirectory path
@@ -135,3 +140,6 @@ listDir path = do
             exists <- doesDirectoryExist d
             if exists then (listDir d) else return [d]
 
+
+showMatchingFilePaths :: [(FilePath, [Match])] -> IO ()
+showMatchingFilePaths matches = mapM_ (putStrLn . fst) matches 

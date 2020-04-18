@@ -5,6 +5,8 @@ import           Test.Hspec
 import Data.String (fromString)
 import Parse
 
+import qualified MatchingTests as M
+
 main :: IO ()
 main = hspec $ do
     ids
@@ -14,6 +16,7 @@ main = hspec $ do
     blocks
     regexps
     someExprs
+    M.spec
 
 is :: String -> Expr -> Spec
 is source result = it source $ parseFile (fromString source) `shouldBe` (Right [result])

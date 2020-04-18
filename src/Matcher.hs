@@ -9,44 +9,45 @@ import qualified Data.ByteString.Internal as BI
 import qualified Data.Word as W
 import Control.Applicative
 import qualified Data.Set as Set
+    
+data Match = Match B.ByteString Cut [Extract]
+
+data Extract = VarName B.ByteString B.ByteString
+    deriving Show
+
+type Pos = (Int, Int) -- zero-based
+type Cut = (Pos, Pos)
 
 findMatches blob exprs = parseOnly (generateMatcher exprs) blob
 
--- findMatches blob exprs = result $ parseFile blob
-   --  where result (Right given) = if given == exprs then Right [Match blob []] else Right []
-     --     result (Left err) = Left err
+type NewlinesAndTail = (Int, Int) -- newlines, bytes after newline
+
+data Piece = Extract B.ByteString [Extract]
+           | Skip NewlinesAndTail
+    deriving Show
 
 generateMatcher :: [Expr] -> Parser [Match]
 generateMatcher exprs = do
     let shouldMatch = generateMany exprs
+    pieces <- many' $ do
+        skip <- fastForward
+        mbMatch <- matchAndSource shouldMatch <|> skipWord
+        return $ [skip, mbMatch]
     ignored
-    let firstCharsList = firstChars $ head exprs
-    let fastForward = skipToFirst firstCharsList -- Small optimization
-    res <- many' $ fastForward >> (matchAndSource shouldMatch <|> (anyWord8 >> return []))
-    ignored
-    return $ concat res
+    return $ piecesToMatches $ concat pieces
     where
-        skipToFirst firstCharsList = takeTill (`elem` firstCharsList)
-
-matchAndSource shouldMatch = do
-    (orig, m) <- match shouldMatch
-    --FIXME - match variables
-    --FIXME (unique (mapping))
-    --FIXME (unique (fst) &7 unique (snd))
-    if isMappingOk m
-        then return [Match orig m]
-        else return []
-
-isMappingOk :: [Extract] -> Bool
-isMappingOk extracts = isAllDifferrent (fmap fst uniq) && isAllDifferrent (fmap snd uniq)
-    where
-        isAllDifferrent items = Set.size (Set.fromList items) == length items  
-        uniq = Set.toList $ Set.fromList $ fmap (\(VarName a b) -> (a,b)) extracts
+        fastForward = do -- Small Optimization
+            let firstCharsList = firstChars $ head exprs
+            piece <- takeTill (`elem` firstCharsList)
+            return $ Skip $ newlinesAndTail piece
+        skipWord = do
+            w <- anyWord8
+            return $ Skip $ if w == 10 then (1,0) else (0,1)
 
 generate :: Expr -> Parser [Extract]
 generate (Id a) = string a >> return []
 generate (Op a) = string a >> return []
-generate (Sep a) = word8 a >> return [] -- FIXME probably should not match separator in some cases
+generate (Sep a) = word8 a >> return []
 generate orig@(Var kind _expr) = do
     word8 kind
     origExpr <- parseExpr -- <- actually parse anything
@@ -55,7 +56,7 @@ generate (Val a) = do
     Val orig <- parseVal
     if orig == a
         then return []
-        else fail "Wrong value"
+        else fail "Differrent value"
 generate (Block begin exprs end) = do
     string begin
     ignored
@@ -71,14 +72,6 @@ generateMany exprs = do
 
 str2bs s = B.pack $ fmap BI.c2w s
 
-data Extract = VarName B.ByteString B.ByteString
-    deriving Show
-    
-data Match = Match B.ByteString [Extract]
-
-instance Show Match where
-    show (Match orig _extracts) = BI.unpackChars orig
-
 firstChars :: Expr -> [W.Word8]
 firstChars (Id a) = [B.head a]
 firstChars (Op a) = [B.head a]
@@ -87,4 +80,41 @@ firstChars (Var kind _) = [kind]
 firstChars (Val a) = (B.head a) : fmap BI.c2w ['"', '\'', 'q', 'm', '`', '<' ] --FIXME m
 firstChars (Block begin _ _) = [B.head begin]
 
+isMappingOk :: [Extract] -> Bool
+isMappingOk extracts = isAllDifferrent (fmap fst uniq) && isAllDifferrent (fmap snd uniq)
+    where
+        isAllDifferrent items = Set.size (Set.fromList items) == length items  
+        uniq = Set.toList $ Set.fromList $ fmap (\(VarName a b) -> (a,b)) extracts
+
+
+addNewlineAndTail :: NewlinesAndTail -> NewlinesAndTail -> NewlinesAndTail
+addNewlineAndTail (aNls, aTl) (bNls, bTl) = (aNls + bNls, if bNls > 0 then bTl else aTl+bTl)
+
+piecesToMatches :: [Piece] -> [Match]
+piecesToMatches pieces = snd $ foldl accWithPositions ((0,0), []) pieces
+    where
+        accWithPositions :: (NewlinesAndTail, [Match]) -> Piece -> (NewlinesAndTail, [Match])
+        accWithPositions (accNlt, matches) (Skip nlt) =
+            (addNewlineAndTail accNlt nlt, matches)
+        accWithPositions (accNlt, matches) (Extract orig extracts) =
+            (newNlt, Match orig (accNlt, newNlt) extracts : matches)
+            where newNlt = addNewlineAndTail accNlt $ newlinesAndTail orig
+
+
+newlinesAndTail :: B.ByteString -> NewlinesAndTail
+newlinesAndTail s = (length nlIndices, getTail nlIndices)
+    where
+        nlIndices = B.elemIndices 10 s
+        getTail [] = B.length s
+        getTail nls = B.length s - last nls - 1
+
+matchAndSource :: Parser [Extract] -> Parser Piece
+matchAndSource shouldMatch = do
+    (orig, extracts) <- match shouldMatch
+    if isMappingOk extracts
+        then return $ Extract orig extracts
+        else fail "variables inconsistent"
+
+countNewlines :: B.ByteString -> Int
+countNewlines = B.count 13
 

@@ -14,29 +14,61 @@ Rules of matching:
 You can give it file or string as a pattern. Also, see `--help`.
 
 ```
-# isocode -v -p '$abcd + $def' ~/tmp/otrs/ 
-
+$ isocode -v -p 'my ( $type, %args ) = @_; my $a = {}; bless( $a, $type);' ~/tmp/otrs/
 Parsing...
-[ Var 36 ( Id "abcd" )
-, Op "+"
-, Var 36 ( Id "def" )
+[ Id "my"
+, Block "("
+    [ Var 36 ( Id "type" )
+    , Sep 44
+    , Var 37 ( Id "args" )
+    ] ")"
+, Op "="
+, Var 64 ( Id "_" )
+, Sep 59
+, Id "my"
+, Var 36 ( Id "a" )
+, Op "="
+, Block "{" [] "}"
+, Sep 59
+, Id "bless"
+, Block "("
+    [ Var 36 ( Id "a" )
+    , Sep 44
+    , Var 36 ( Id "type" )
+    ] ")"
+, Sep 59
 ]
 Scanning...
-/home/spek/tmp/otrs/scripts/test/SMIME.t:1
-$Counter + $OriginalPrivateListCount
-/home/spek/tmp/otrs/scripts/test/Ticket.t:1
-$CurrentSystemTime + $Diff
+/home/spek/tmp/otrs/scripts/test/Layout/Template/OutputFilter.pm:15:5
+my ( $Type, %Param ) = @_;
+
+    # allocate new hash for object
+    my $Self = {};
+    bless( $Self, $Type );
+/home/spek/tmp/otrs/scripts/test/Layout/Template/OutputFilterInclude.pm:15:5
+my ( $Type, %Param ) = @_;
+
+    # allocate new hash for object
+    my $Self = {};
+    bless( $Self, $Type );
+/home/spek/tmp/otrs/scripts/test/CommunicationChannel/Test.pm:19:5
+my ( $Type, %Param ) = @_;
+
+    my $Self = {};
+    bless( $Self, $Type );
 
 ...
 
-/home/spek/tmp/otrs/Kernel/Output/HTML/FilterText/AutoLink.pm:1
-$Counter + $_
-/home/spek/tmp/otrs/Kernel/Output/HTML/Dashboard/AppointmentCalendar.pm:1
-$CurrentSystemTime + $DateOffset
+/home/spek/tmp/otrs/Kernel/Output/PDF/Ticket.pm:32:5
+my ( $Type, %Param ) = @_;
+
+    # Allocate new hash for object.
+    my $Self = {};
+    bless( $Self, $Type );
 Files in directory: 5381
 Scanned 2728 files with 0 errors
-Total 90 files matches
-Total 315 matches
+Total 372 files matches
+Total 372 matches
 ```
 ## Why
 
