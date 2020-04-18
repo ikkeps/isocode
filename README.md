@@ -3,14 +3,6 @@
 
 Search Perl 5 sources by given code example.
 
-Rules of matching:
-
-* Ignore the differrence between ways of writing literal values: e.g. ` "abc" ` == `q(abc)`. Even `"123"` == `123`
-* Variable names can be differrent, but must be consistent: `$a + $a` == `$b + b`, but `$a + $b` != `$c + $c`
-* Whitespace, newlines and comments are ignored.
-
-## Usage
-
 You can give it file or string as a pattern. Also, see `--help`.
 
 ```
@@ -70,6 +62,13 @@ Scanned 2728 files with 0 errors
 Total 372 files matches
 Total 372 matches
 ```
+
+Rules of matching:
+
+* Ignore the differrence between ways of writing literal values: e.g. ` "abc" ` == `q(abc)`. Even `"123"` == `123`
+* Variable names can be differrent, but must be consistent: `$a + $a` == `$b + b`, but `$a + $b` != `$c + $c`
+* Whitespace, newlines and comments are ignored.
+
 ## Why
 
 For fun. Maybe it will help someone.
