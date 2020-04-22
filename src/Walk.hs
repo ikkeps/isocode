@@ -7,7 +7,6 @@ import Text.Pretty.Simple (pPrint)
 import System.Directory
 import System.FilePath ((</>))
 import qualified Options.Applicative as Opt
-import Data.Semigroup ((<>))
 import Control.Monad (when)
 import Control.Applicative ((<**>), (<|>))
 import Data.List

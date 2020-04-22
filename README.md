@@ -81,8 +81,8 @@ You need `ghc` haskell compiller (I used v 8.0.2). + `cabal`.
 You can get those from, e.g. `haskell-platform` packet in Ubuntu. 
 
 ```
-# make build
-# ./dist/build/isocode/isocode --help
+# ./build-in-docker.sh
+# ./isocode --help
 isocode - search source tree by Perl code sample
 
 Usage: isocode (PATTERN_FILE | (-p|--pattern PATTERN)) SEARCH_DIR [-v|--verbose]
