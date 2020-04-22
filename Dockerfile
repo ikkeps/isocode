@@ -25,6 +25,9 @@ RUN cabal configure
 RUN cabal build
 RUN cabal test
 
+RUN ls -l .
+RUN ls -lR dist
+
 RUN strip dist/build/isocode/isocode
 
 CMD ["/opt/isocode/dist/build/isocode/isocode"]
