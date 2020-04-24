@@ -16,7 +16,7 @@ import Parse (parseFile, Expr)
 import Matcher (findMatches, Match(..))
 import System.Exit (exitSuccess)
 import Control.Concurrent.Async.Pool (withTaskGroup, mapConcurrently)
-
+import qualified Transform
 import qualified Data.ByteString.Internal as BI
 
 
@@ -69,6 +69,8 @@ main = do
     exprs <- case eitherExprs of
                   Right exprs -> return exprs
                   Left msg -> fail msg --FIXME proper message
+
+    exprs <- return $ Transform.t exprs
 
     when (verbose args || justParse args) $ pPrint exprs
     when (justParse args) $ exitSuccess

@@ -43,7 +43,7 @@ common shared-properties
 library
   import: shared-properties
   hs-source-dirs:      src
-  exposed-modules: Parse, Matcher
+  exposed-modules: Parse, Matcher, Transform
 
 executable isocode
   import: shared-properties

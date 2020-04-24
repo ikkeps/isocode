@@ -1,2 +1,4 @@
 /dist*
 /isocode
+/.cabal-sandbox
+/.git

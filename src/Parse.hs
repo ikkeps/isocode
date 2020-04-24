@@ -18,6 +18,10 @@ data Expr = Id B.ByteString    -- abcde
           | Block B.ByteString [Expr] B.ByteString -- {*} / [] / ()
           | Sep W.Word8   -- ; or ,
           | Val B.ByteString -- 123.0 / "123abc" / '123abc' / <<EOF..EOF
+-- Here goes matching stuff
+          | Optional Expr
+          | Choice [Expr] 
+          | Anything
         deriving (Eq, Show)
         
 

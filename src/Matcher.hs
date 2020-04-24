@@ -20,7 +20,7 @@ type Cut = (Pos, Pos)
 
 findMatches blob exprs = parseOnly (generateMatcher exprs) blob
 
-type NewlinesAndTail = (Int, Int) -- newlines, bytes after newline
+type NewlinesAndTail = (Int, Int) -- (newlines, bytes after newline)
 
 data Piece = Extract B.ByteString [Extract]
            | Skip NewlinesAndTail
@@ -64,6 +64,10 @@ generate (Block begin exprs end) = do
     ignored
     string end
     return extracts
+generate (Optional e) = option [] (generate e)
+generate (Choice exprs) = choice $ fmap generate exprs
+generate Anything = parseManyExprs >> return []
+
 
 generateMany :: [Expr] -> Parser [Extract]
 generateMany exprs = do
@@ -79,6 +83,9 @@ firstChars (Sep a) = [a]
 firstChars (Var kind _) = [kind]
 firstChars (Val a) = (B.head a) : fmap BI.c2w ['"', '\'', 'q', 'm', '`', '<' ] --FIXME m
 firstChars (Block begin _ _) = [B.head begin]
+firstChars (Optional _) = undefined -- FIXME should not happen
+firstChars (Choice exprs) = concat $ fmap firstChars exprs
+firstChars (Anything) = [] -- FIXME impossible?
 
 isMappingOk :: [Extract] -> Bool
 isMappingOk extracts = isAllDifferrent (fmap fst uniq) && isAllDifferrent (fmap snd uniq)
