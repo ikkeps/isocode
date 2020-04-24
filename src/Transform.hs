@@ -13,6 +13,6 @@ t (Val "." : Op "*": rest) = Anything : t rest
 t (e : rest) = e : t rest
 t [] = []
 
-withSepAtEnd exprs@(last -> Sep _ ) = withSepAtEnd $ init exprs
 withSepAtEnd [] = t []
+withSepAtEnd exprs@(last -> Sep _ ) = withSepAtEnd $ init exprs
 withSepAtEnd exprs = t $ exprs ++ [ Optional ( Choice [Sep 44, Sep 59] ) ]

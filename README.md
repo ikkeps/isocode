@@ -13,6 +13,12 @@ Parsing...
     [ Var 36 ( Id "type" )
     , Sep 44
     , Var 37 ( Id "args" )
+    , Optional
+        ( Choice
+            [ Sep 44
+            , Sep 59
+            ]
+        )
     ] ")"
 , Op "="
 , Var 64 ( Id "_" )
@@ -27,9 +33,16 @@ Parsing...
     [ Var 36 ( Id "a" )
     , Sep 44
     , Var 36 ( Id "type" )
+    , Optional
+        ( Choice
+            [ Sep 44
+            , Sep 59
+            ]
+        )
     ] ")"
 , Sep 59
 ]
+
 Scanning...
 /home/spek/tmp/otrs/scripts/test/Layout/Template/OutputFilter.pm:15:5
 my ( $Type, %Param ) = @_;
