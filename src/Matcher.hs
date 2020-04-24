@@ -83,9 +83,9 @@ firstChars (Sep a) = [a]
 firstChars (Var kind _) = [kind]
 firstChars (Val a) = (B.head a) : fmap BI.c2w ['"', '\'', 'q', 'm', '`', '<' ] --FIXME m
 firstChars (Block begin _ _) = [B.head begin]
-firstChars (Optional _) = undefined -- FIXME should not happen
+firstChars (Optional _) = error "cannot start with optional characters at the begining" 
 firstChars (Choice exprs) = concat $ fmap firstChars exprs
-firstChars (Anything) = [] -- FIXME impossible?
+firstChars (Anything) = error "capture anything in beggining is not supported"
 
 isMappingOk :: [Extract] -> Bool
 isMappingOk extracts = isAllDifferrent (fmap fst uniq) && isAllDifferrent (fmap snd uniq)
