@@ -1,5 +1,5 @@
 # Isocode
-![](https://github.com/ikkeps/isocode/workflows/Haskell%20CI/badge.svg)
+![Docker Image CI](https://github.com/ikkeps/isocode/workflows/Docker%20Image%20CI/badge.svg?branch=master)
 
 Search Perl 5 sources by given code example.
 
