@@ -18,6 +18,7 @@ data Expr = Id B.ByteString    -- abcde
           | Block B.ByteString [Expr] B.ByteString -- {*} / [] / ()
           | Sep W.Word8   -- ; or ,
           | Val B.ByteString -- 123.0 / "123abc" / '123abc' / <<EOF..EOF
+          | Qw [B.ByteString] -- qw(...)
 -- Here goes matching stuff
           | Optional Expr
           | Choice [Expr] 
@@ -84,20 +85,25 @@ canBeBracket w = isOperator w || inClass "@" w
 anySymbolBracket = anyBracket <|> (satisfy canBeBracket >>= \w -> return (B.singleton w, B.singleton w))
 
 parseQ = choice [
-        fullyEscaped "qq",
-        fullyEscaped "qw",
+        (Val <$> fullyEscapedWithPrefix "qq"),
+        parseQw,
         quoteBrackets 'q',
         quoteBrackets 'm' -- FIXME this is quickfix
         ]
     where
-        fullyEscaped prefix = do
-            string prefix
-            (_, end) <- anySymbolBracket
-            Val <$> stringWithEscapesTill fullEscapeSeq end
         quoteBrackets prefix = do
             chr prefix
             (begin, end) <- anySymbolBracket
             Val <$> stringWithEscapesTill (escapeOnly [B.head begin, B.head end]) end
+
+fullyEscapedWithPrefix prefix = do
+    string prefix
+    (_, end) <- anySymbolBracket
+    stringWithEscapesTill fullEscapeSeq end
+
+parseQw = do
+    orig <- fullyEscapedWithPrefix "qw"
+    return $ Qw $ fmap BI.packChars $ words $ BI.unpackChars orig
 
 parseVal :: Parser Expr
 parseVal = do

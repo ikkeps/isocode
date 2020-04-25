@@ -59,7 +59,6 @@ generate (Val a) = do
         else fail "Differrent value"
 generate (Block begin exprs end) = do
     string begin
-    ignored
     extracts <- generateMany exprs
     ignored
     string end
@@ -67,7 +66,11 @@ generate (Block begin exprs end) = do
 generate (Optional e) = option [] (generate e)
 generate (Choice exprs) = choice $ fmap generate exprs
 generate Anything = parseManyExprs >> return []
-
+generate (Qw orig) = do
+    Qw other <- parseQw
+    if orig == other
+        then return []
+        else fail "Differrent value"
 
 generateMany :: [Expr] -> Parser [Extract]
 generateMany exprs = do
@@ -86,6 +89,7 @@ firstChars (Block begin _ _) = [B.head begin]
 firstChars (Optional _) = error "cannot start with optional characters at the begining" 
 firstChars (Choice exprs) = concat $ fmap firstChars exprs
 firstChars (Anything) = error "capture anything in beggining is not supported"
+firstChars (Qw _) = fmap BI.c2w ['q']
 
 isMappingOk :: [Extract] -> Bool
 isMappingOk extracts = isAllDifferrent keys && isAllDifferrent values

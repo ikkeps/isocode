@@ -113,8 +113,12 @@ values = describe "values" $ do
         is "qq( ab\\nc )" $ Val " ab\nc "
         is "qq[ abc ]" $ Val " abc "
     describe "qw" $ do
-        return ()
--- FIXME    is "qw( ab cd )" $ Block "(" [FIXME] ")"
+        is "qw( ab cd )" $ Qw ["ab", "cd"]
+        is "qw/ ab cd /" $ Qw ["ab", "cd"]
+        is "qw//" $ Qw []
+        is "qw/ 'ab' (cd)/" $ Qw ["'ab'", "(cd)"]
+        is "qw[ k\"ek ]" $ Qw ["k\"ek"]
+        is "qw[ kek \n \n lol ]" $ Qw ["kek", "lol"]
 
     describe "here document" $ do -- Note: newline is part of value in perl
 --- FIXME EOF on marker does not work        is "<<SQL;\nabc\nSQL" $ Val "abc\n"  -- should fail
