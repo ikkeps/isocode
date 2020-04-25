@@ -6,45 +6,19 @@ Search Perl 5 sources by given code example.
 You can give it file or string as a pattern. Command line interface is compatible with `grep`, so in common cases you can replace `grep` with `isocode`.
 See `--help` for all supported options.
 
-```
-$ ./isocode -nr -e 'my ( $type, %args ) = @_; my $a = {}; bless( $a, $type);' ~/tmp/otrs/ -W
-Parsing...
-[ Id "my"
-, Block "("
-    [ Var 36 ( Id "type" )
-    , Sep 44
-    , Var 37 ( Id "args" )
-    , Optional
-        ( Choice
-            [ Sep 44
-            , Sep 59
-            ]
-        )
-    ] ")"
-, Op "="
-, Var 64 ( Id "_" )
-, Sep 59
-, Id "my"
-, Var 36 ( Id "a" )
-, Op "="
-, Block "{" [] "}"
-, Sep 59
-, Id "bless"
-, Block "("
-    [ Var 36 ( Id "a" )
-    , Sep 44
-    , Var 36 ( Id "type" )
-    , Optional
-        ( Choice
-            [ Sep 44
-            , Sep 59
-            ]
-        )
-    ] ")"
-, Sep 59
-]
+Rules of matching:
 
-Scanning...
+* All brackets should have pair in patter. E.g. you can not search for ` if ( `. Sorry :(
+* ` "abc" ` == ` 'abc' ` == `q(abc)` == `qq(abc)`. Even `"123"` == `123`
+* ` m/[a-z]/ ` == ` /[a-z]/ ` == ` "[a-z]" ` . But if there are any flags - it should be always a regexp.
+* `qw( 1 2  3 )` == `qw(1 2 3)` == `(1,2,3)` == `("1", 2, "3")` ...
+* Trailing separators ignored: `(1,2,3,)` == `(1,2,3)` and `{ a(); b(); }` == ` { a(); b() } `
+* Variable names can be differrent! But must be consistent: `$a + $a` == `$b + b`, but `$a + $b` != `$c + $c`
+* Whitespace, newlines and comments are ignored.
+* *BETA*: Wildcard ` *** ` matches anything till the end of the block. You can use it like ` if (! ***) {die *** }`. (dont forget to surround it with spaces, so parser dont get confused) . #11
+
+```
+$ ./isocode -nr -e 'my ( $type, %args ) = @_; my $a = {}; bless( $a, $type);' ~/tmp/otrs/
 /home/spek/tmp/otrs/scripts/test/Layout/Template/OutputFilter.pm:15:5
 my ( $Type, %Param ) = @_;
 
@@ -77,13 +51,9 @@ Total 372 files matches
 Total 372 matches
 ```
 
-Rules of matching:
-
-* Ignore the differrence between ways of writing literal values: e.g. ` "abc" ` == `q(abc)`. Even `"123"` == `123`
-* Variable names can be differrent, but must be consistent: `$a + $a` == `$b + b`, but `$a + $b` != `$c + $c`
-* Whitespace, newlines and comments are ignored.
-
 ## Why
+
+https://www.youtube.com/watch?v=JtHi6bSZX4E
 
 For fun. Maybe it will help someone.
 
