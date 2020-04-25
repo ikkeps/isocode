@@ -4,6 +4,8 @@
 Search Perl 5 sources by given code example.
 
 You can give it file or string as a pattern. Command line interface is compatible with `grep`, so in common cases you can replace `grep` with `isocode`.
+Binary is build for Linux and completely static, so no need to install any dependencies.
+
 See `--help` for all supported options.
 
 Rules of matching:
@@ -13,9 +15,11 @@ Rules of matching:
 * ` m/[a-z]/ ` == ` /[a-z]/ ` == ` "[a-z]" ` . But if there are any flags - it should be always a regexp.
 * `qw( 1 2  3 )` == `qw(1 2 3)` == `(1,2,3)` == `("1", 2, "3")` ...
 * Trailing separators ignored: `(1,2,3,)` == `(1,2,3)` and `{ a(); b(); }` == ` { a(); b() } `
-* Variable names can be differrent! But must be consistent: `$a + $a` == `$b + b`, but `$a + $b` != `$c + $c`
+* Variable names can be differrent! But must be consistent: ` $a + $a ` == ` $b + $b `, but ` $a + $b ` != ` $c + $c `
 * Whitespace, newlines and comments are ignored.
 * *BETA*: Wildcard ` *** ` matches anything till the end of the block. You can use it like ` if (! ***) {die *** }`. (dont forget to surround it with spaces, so parser dont get confused) . #11
+
+## Run
 
 ```
 $ ./isocode -nr -e 'my ( $type, %args ) = @_; my $a = {}; bless( $a, $type);' ~/tmp/otrs/
@@ -59,10 +63,9 @@ For fun. Maybe it will help someone.
 
 "isocode" means "isomorphic code".
 
-## Build and run
+## Build
 
-You need `ghc` haskell compiller (I used v 8.0.2). + `cabal`.
-You can get those from, e.g. `haskell-platform` packet in Ubuntu. 
+I just gave up setting up ghc no my machine to build static binary, so its built in docker.
 
 ```
 # ./build-in-docker.sh
@@ -104,6 +107,6 @@ Its faster than parsing whole source, but stil may be slow for common characters
 
 TLDR: Basically, its three parser generators (one for command line arguments) stiched together.
 
-## What doesn't work and TODO
+## What (doesn't) work and TODO
 
-See Issues tab on github.
+See Issues tab on github. Both already implemented and still TBD should be there.
