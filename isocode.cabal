@@ -40,16 +40,10 @@ common shared-properties
     -optc-fPIC
     -fPIC
 
-library
-  import: shared-properties
-  hs-source-dirs:      src
-  exposed-modules: Parse, Matcher, Transform
-
 executable isocode
   import: shared-properties
   hs-source-dirs: src
   main-is:        Walk.hs
-  build-depends:  isocode
   other-modules:  Matcher, Parse, Transform
 
 test-suite test-all
@@ -57,5 +51,5 @@ test-suite test-all
   hs-source-dirs:      src, test
   type:       exitcode-stdio-1.0
   main-is:    Spec.hs
-  build-depends: hspec >= 2.7.1 , isocode
+  build-depends: hspec >= 2.7.1
   other-modules: Matcher MatchingTests Parse

@@ -50,13 +50,9 @@ generate (Op a) = string a >> return []
 generate (Sep a) = word8 a >> return []
 generate orig@(Var kind _expr) = do
     word8 kind
-    origExpr <- parseExpr -- <- actually parse anything
+    origExpr <- parseExpr Nothing -- <- actually parse anything
     return [VarName (str2bs $ show orig) (str2bs $ show (Var kind origExpr))] -- Lame mapping
-generate (Val a) = do
-    Val orig <- parseVal
-    if orig == a
-        then return []
-        else fail "Differrent value"
+generate val@(Val _) = val `sameAs` parseVal
 generate (Block begin exprs end) = do
     string begin
     extracts <- generateMany exprs
@@ -66,9 +62,12 @@ generate (Block begin exprs end) = do
 generate (Optional e) = option [] (generate e)
 generate (Choice exprs) = choice $ fmap generate exprs
 generate Anything = parseManyExprs >> return []
-generate (Qw orig) = do
-    Qw other <- parseQw
-    if orig == other
+generate qw@(Qw _) = qw `sameAs` parseQw
+generate re@(RegExp _ _) = re `sameAs` parseAnyRegExp
+
+sameAs orig parser = do
+    v <- parser
+    if orig == v
         then return []
         else fail "Differrent value"
 
@@ -84,12 +83,14 @@ firstChars (Id a) = [B.head a]
 firstChars (Op a) = [B.head a]
 firstChars (Sep a) = [a]
 firstChars (Var kind _) = [kind]
-firstChars (Val a) = (B.head a) : fmap BI.c2w ['"', '\'', 'q', 'm', '`', '<' ] --FIXME m
+firstChars (Val "") = fmap BI.c2w ['"', '\'', 'q', '`', '<' ]
+firstChars (Val a) = (B.head a) : fmap BI.c2w ['"', '\'', 'q', '`', '<' ]
 firstChars (Block begin _ _) = [B.head begin]
 firstChars (Optional _) = error "cannot start with optional characters at the begining" 
 firstChars (Choice exprs) = concat $ fmap firstChars exprs
 firstChars (Anything) = error "capture anything in beggining is not supported"
 firstChars (Qw _) = fmap BI.c2w ['q']
+firstChars (RegExp _ _) = fmap BI.c2w ['m', '/']
 
 isMappingOk :: [Extract] -> Bool
 isMappingOk extracts = isAllDifferrent keys && isAllDifferrent values

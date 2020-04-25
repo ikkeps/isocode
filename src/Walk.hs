@@ -63,12 +63,22 @@ main = do
     
     blob <- loadPattern $ pattern args  
     
-    when (verbose args) $ putStrLn "Parsing..."
+    when (verbose args || justParse args) $ putStrLn "Parsing...\n"
 
     exprs <- eitherFail $ parseFile blob
+
+    when (verbose args || justParse args) $ do
+        pPrint exprs
+        putStrLn ""
+        putStrLn "Matching pattern:"
+        putStrLn ""
+
     exprs <- eitherFail $ transform exprs
 
-    when (verbose args || justParse args) $ pPrint exprs
+    when (verbose args || justParse args) $ do
+        pPrint exprs
+        putStrLn ""
+
     when (justParse args) $ exitSuccess
     when (verbose args) $ putStrLn "Scanning..."
 

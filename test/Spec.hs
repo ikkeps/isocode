@@ -75,10 +75,16 @@ vars = describe "vars" $ do
 
 
 regexps = describe "regexps" $ do
-    is "m/k.e.k/" $ Val "k.e.k"
---FIXME    is " =~ /k.e.k/ " $ Val "k.e.k"
---FIXME    is " m/k.e.k/abc " $ Val "k.e.k"
-    is "m//" $ Val ""
+    is "m/k.e.k/" $ RegExp "k.e.k" ""
+    is "/k.e.k/" $ RegExp "k.e.k" ""
+    isMany " =~ /k.e.k/ " $ [Op "=~", RegExp "k.e.k" ""]
+    isMany "; /k.e.k/ " $ [Sep 59, RegExp "k.e.k" ""]
+    is "m//" $ RegExp "" ""
+    is "m[ abc ]" $ RegExp " abc " ""
+    isMany "$a / $b" $ [ Var 36 (Id "a"), Op "/",  Var 36 (Id "b")]
+    isMany "a / $b" $ [ Id "a", Op "/",  Var 36 (Id "b")]
+    is "m/ab/cd" $ RegExp "ab" "cd"
+    
 
 
 values = describe "values" $ do

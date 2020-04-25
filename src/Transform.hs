@@ -19,6 +19,7 @@ t (Id i : Op "=>": rest) = Choice [ Id i , Val i ] : Op "=>" : t rest
 t (Block "(" exprs ")": rest) | isCsv exprs = t $ Qw (unCsv exprs) : rest -- turn regular arrays to qws to turn it to choice later
 t (Block a exprs b: rest) = Block a (t $ withSepAtEnd exprs) b : t rest
 t (Op "***": rest) = t $ Anything : rest
+t (re@(RegExp e ""): rest ) = t $ Choice [re, Val e] : rest
 t (qw@(Qw items): rest) = t $ Choice [ qw, mkArray items ] : rest
 t (e : rest) = e : t rest
 t [] = []

@@ -19,6 +19,7 @@ data Expr = Id B.ByteString    -- abcde
           | Sep W.Word8   -- ; or ,
           | Val B.ByteString -- 123.0 / "123abc" / '123abc' / <<EOF..EOF
           | Qw [B.ByteString] -- qw(...)
+          | RegExp B.ByteString B.ByteString -- m/.../abc
 -- Here goes matching stuff
           | Optional Expr
           | Choice [Expr] 
@@ -47,11 +48,25 @@ parseSep :: Parser Expr
 parseSep = Sep <$> (chr ';' <|> chr ',')
 
 parseManyExprs :: Parser [Expr]
-parseManyExprs = ignored >> parseExpr `sepBy` ignored <* ignored
+parseManyExprs = do
+    ignored
+    exprs <- iterate []
+    ignored
+    return $ reverse exprs
+    where
+        iterate exprs = do
+            ignored
+            let prev = maybeFirst exprs
+            (parseExpr prev >>= \e -> iterate (e:exprs)) <|> return exprs
+        maybeFirst (a:_) = Just a
+        maybeFirst [] = Nothing
 
-parseExpr :: Parser Expr
-parseExpr = choice [
-              parseQ
+
+-- prev needed to distinguish regexp from others
+parseExpr :: Maybe Expr -> Parser Expr
+parseExpr prev = choice [
+              parseRegExp prev
+            , parseQ
             , parseId
             , parseVar -- $.. @... \...
             , parseBlock -- [ ], ( )
@@ -60,12 +75,12 @@ parseExpr = choice [
             , hereDocument
             , parseOp  -- + / -
             , parsePrototype -- ($$@$) kind of stuff
+            -- FIXME parse tr/../../
             -- FIXME string interpolation extraction
             -- FIXME  =smth
-            -- FIXME regexp - it always goes after =~ op or first statement after separator
             ]
 
-parseVar = Var <$> varType <*> parseExpr
+parseVar = Var <$> varType <*> (parseExpr Nothing)
     where varType = chr '@' <|> chr '$' <|> chr '%'
 
 isOperator = inClass "-<>=&/\\!.*+?^:|~"
@@ -84,17 +99,35 @@ canBeBracket w = isOperator w || inClass "@" w
 
 anySymbolBracket = anyBracket <|> (satisfy canBeBracket >>= \w -> return (B.singleton w, B.singleton w))
 
+parseRegExp Nothing = parseAnyRegExp
+parseRegExp (Just (Op _) ) = parseAnyRegExp
+parseRegExp (Just (Sep _)) = parseAnyRegExp
+parseRegExp (Just _) = mRegExp
+
+mRegExp = do
+    chr 'm'
+    RegExp <$> quoteBrackets
+           <*> regexpFlags
+
+regexpFlags = Data.Attoparsec.ByteString.takeWhile (inClass "a-z")
+
+parseAnyRegExp = mRegExp <|> slashesRegexp
+    where
+        slashesRegexp = do
+            chr '/'
+            re <- stringWithEscapesTill (escapeOnly [ BI.c2w '/']) "/"
+            f <- regexpFlags
+            return $ RegExp re f
+
 parseQ = choice [
         (Val <$> fullyEscapedWithPrefix "qq"),
         parseQw,
-        quoteBrackets 'q',
-        quoteBrackets 'm' -- FIXME this is quickfix
+        (Val <$> (chr 'q' >> quoteBrackets))
         ]
-    where
-        quoteBrackets prefix = do
-            chr prefix
-            (begin, end) <- anySymbolBracket
-            Val <$> stringWithEscapesTill (escapeOnly [B.head begin, B.head end]) end
+
+quoteBrackets = do
+    (begin, end) <- anySymbolBracket
+    stringWithEscapesTill (escapeOnly [B.head begin, B.head end]) end
 
 fullyEscapedWithPrefix prefix = do
     string prefix
