@@ -84,7 +84,8 @@ regexps = describe "regexps" $ do
     isMany "$a / $b" $ [ Var 36 (Id "a"), Op "/",  Var 36 (Id "b")]
     isMany "a / $b" $ [ Id "a", Op "/",  Var 36 (Id "b")]
     is "m/ab/cd" $ RegExp "ab" "cd"
-    
+    is "m/[a-z]/io" $ RegExp "[a-z]" "io"
+
 
 
 values = describe "values" $ do
