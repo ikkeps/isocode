@@ -18,7 +18,7 @@ import System.Exit (exitSuccess)
 import Transform (transform)
 import qualified Data.ByteString.Internal as BI
 import System.Console.ANSI as A
-
+import System.Exit (exitWith, ExitCode(..))
 
 data Arguments = Arguments
   { pattern     :: Either FilePath String
@@ -65,8 +65,8 @@ main = do
     
     when (verbose args) $ putStrLn "Parsing..."
 
-    exprs <- either fail return $ parseFile blob
-    exprs <- either fail return $ transform exprs
+    exprs <- eitherFail $ parseFile blob
+    exprs <- eitherFail $ transform exprs
 
     when (verbose args || justParse args) $ pPrint exprs
     when (justParse args) $ exitSuccess
@@ -86,6 +86,11 @@ main = do
         mapM_ showFileMatches found 
         showStats allFileNames matches found
 
+    if null found then
+        exitWith ExitSuccess
+    else
+        exitWith $ ExitFailure 1 -- mimic grep
+
     where
         isPerlFileName p = any (`isSuffixOf` p) perlExtensions
     
@@ -94,13 +99,23 @@ main = do
         anyMatches (name, (Right matches)) = Just (name, matches)
         anyMatches (_, (Left _)) = Nothing
 
+eitherFail :: Either String a -> IO a
+eitherFail e = either crash return e
+    where
+        crash :: String -> IO a
+        crash msg = do
+            putStrLn msg
+            exitWith $ ExitFailure 2
+
 showStats :: [FilePath] -> [(FilePath, Either String [Match])] -> [(FilePath, [Match])] -> IO ()
 showStats allFileNames matches found = do  
     let errors = filter isError matches
-    putStrLn $ "Files in directory: " ++ show (length allFileNames)
-    putStrLn $ "Scanned " ++ show (length matches) ++ " files with " ++ show (length errors) ++ " errors"
-    putStrLn $ "Total " ++ show (length found) ++ " files matches"
-    putStrLn $ "Total " ++ show (sum $ fmap (length . snd) found) ++ " matches"
+    mapM_ putStrLn [
+          "Files in directory: " ++ show (length allFileNames)
+        , "Scanned " ++ show (length matches) ++ " files with " ++ show (length errors) ++ " errors"
+        , "Total " ++ show (length found) ++ " files matches"
+        , "Total " ++ show (sum $ fmap (length . snd) found) ++ " matches"
+        ]
     where
         isError (_, (Left _)) = True
         isError _ = False
