@@ -1,4 +1,4 @@
-FROM alpine:edge
+FROM alpine:edge AS builder
 
 RUN apk update
 RUN apk add ghc=8.8.3-r0 cabal wget
@@ -16,4 +16,7 @@ RUN cabal install --only-dependencies -j4
 RUN cabal test
 RUN cabal install exe:isocode --overwrite-policy=always --installdir=. --install-method=copy
 
-CMD ["/opt/isocode/isocode"]
+FROM alpine:edge
+COPY --from=builder /opt/isocode/isocode /bin/isocode
+
+CMD ["/bin/isocode"]

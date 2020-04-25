@@ -2,3 +2,5 @@
 /isocode
 /.cabal-sandbox
 /.git
+/Dockerfile
+/build-in-docker.sh
