@@ -210,6 +210,8 @@ parseWhole = do
 parseFile :: B.ByteString -> Either String [Expr]
 parseFile source = parseOnly parseWhole source
         
+justErrorLine :: Parser ()
 justErrorLine = do
-    lines <- count 4 $ manyTill anyWord8 (string "\n" <|> (endOfInput >> return ""))
-    fail $ show $ fmap (BI.unpackChars . B.pack) lines
+    words <- takeByteString
+    fail $ " Can not parse remaining: " ++ BI.unpackChars words
+    return ()

@@ -11,7 +11,7 @@ transform exprs = checkErrors $ t exprs
 t :: [Expr] -> [Expr]
 t (Id i : Op "=>": rest) = Choice [ Val i, Id i ] : Op "=>" : t rest
 t (Block a exprs b: rest) = Block a (t $ withSepAtEnd exprs) b : t rest
-t (Val "." : Op "*": rest) = t $ Anything : rest
+t (Op "***": rest) = t $ Anything : rest
 t (e : rest) = e : t rest
 t [] = []
 

@@ -18,6 +18,7 @@ import System.Exit (exitSuccess)
 import Control.Concurrent.Async.Pool (withTaskGroup, mapConcurrently)
 import Transform (transform)
 import qualified Data.ByteString.Internal as BI
+import System.Console.ANSI as A
 
 
 data Arguments = Arguments
@@ -118,13 +119,15 @@ matchFile exprs name = do
             blob <- B.readFile name
             return $ findMatches blob exprs
 
-loadPattern pat = either B.readFile (return . BI.packChars) pat 
+loadPattern :: Either String String -> IO B.ByteString
+loadPattern pat = either B.readFile (return . BI.packChars) pat
 
 showFileMatches :: (FilePath, [Match]) -> IO ()
 showFileMatches (path, matches) = mapM_ (putStrLn . showMatch) matches
     where
-        showMatch (Match orig ((line, pos), _) _extract) = path ++ ":" ++ show (line+1) ++ ":" ++ show (pos+1) ++ "\n" ++ BI.unpackChars orig
-            
+        showMatch (Match orig (startPos, _) _extract) = emphasized (fileAndPosition startPos) ++ "\n" ++ BI.unpackChars orig
+        fileAndPosition (line, pos) = path ++ ":" ++ show (line+1) ++ ":" ++ show (pos+1)
+
 listDir:: FilePath -> IO [FilePath]
 listDir path = do
     subdirs <- (fmap (path </>)) <$> listDirectory path
@@ -137,4 +140,6 @@ listDir path = do
 
 
 showMatchingFilePaths :: [(FilePath, [Match])] -> IO ()
-showMatchingFilePaths matches = mapM_ (putStrLn . fst) matches 
+showMatchingFilePaths matches = mapM_ (putStrLn . fst) matches
+
+emphasized s = (A.setSGRCode [A.SetColor A.Foreground A.Dull A.Blue]) ++ s ++ A.setSGRCode [A.Reset] 
