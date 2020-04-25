@@ -14,5 +14,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag isocode:$(date +%s) --tag isocode:latest
+    - name: Build in Docker and Publish Image
+      uses: matootie/github-docker@v2.2.2
+      with:
+        accessToken: ${{ secrets.GITHUB_TOKEN }}
