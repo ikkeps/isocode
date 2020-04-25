@@ -100,15 +100,14 @@ You can get those from, e.g. `haskell-platform` packet in Ubuntu.
 isocode - search source tree by Perl code sample
 
 Usage: isocode (PATTERN | (-e|--regexp PATTERN) | (-f|--file PATTERN_FILE))
-               SEARCH_DIR [-W|--verbose] [-Y|--debug] [-j|--concurrency ARG] 
-               [-l|--files-with-matches] [-r|--recursive] [-n|--line-number]
+               SEARCH_DIR [-W|--verbose] [-Y|--debug] [-l|--files-with-matches] 
+               [-r|--recursive] [-n|--line-number]
   Searches for code similar to PATTERN_FILE or PATTERN in SEARCH_DIR.
 
 Available options:
   -W,--verbose             (non grep compat) 'WHAT?' spew debug information
   -Y,--debug               (non grep compat) 'WHY?' just parse the pattern and
                            show, do not search for it
-  -j,--concurrency ARG     (non-grep compat) How many threads in parallell
   -l,--files-with-matches  Show only filenames of matched files
   -r,--recursive           IGNORED, always on
   -n,--line-number         IGNORED, always on
@@ -132,8 +131,6 @@ Search is done by naive algorithm with simple optimization:
 4. If fail - go to 2
 
 Its faster than parsing whole source, but stil may be slow for common characters.
-
-Files are loaded and parsed concurrently, but it doesn help much :)
 
 TLDR: Basically, its three parser generators (one for command line arguments) stiched together.
 

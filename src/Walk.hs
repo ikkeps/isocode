@@ -15,7 +15,6 @@ import qualified Data.ByteString as B
 import Parse (parseFile, Expr)
 import Matcher (findMatches, Match(..))
 import System.Exit (exitSuccess)
-import Control.Concurrent.Async.Pool (withTaskGroup, mapConcurrently)
 import Transform (transform)
 import qualified Data.ByteString.Internal as BI
 import System.Console.ANSI as A
@@ -26,7 +25,6 @@ data Arguments = Arguments
   , searchDir   :: String
   , verbose     :: Bool
   , justParse   :: Bool
-  , concurrency :: Int
   , fileNamesOnly :: Bool
   , recursive   :: Bool
   , lineNumber  :: Bool
@@ -45,7 +43,6 @@ argumentsParser = Arguments
     <*> Opt.strArgument (Opt.metavar "SEARCH_DIR")
     <*> Opt.switch (Opt.short 'W' <> Opt.long "verbose" <> Opt.help "(non grep compat) 'WHAT?' spew debug information")
     <*> Opt.switch (Opt.short 'Y' <> Opt.long "debug" <> Opt.help "(non grep compat) 'WHY?' just parse the pattern and show, do not search for it")
-    <*> Opt.option Opt.auto (Opt.short 'j' <> Opt.long "concurrency" <> Opt.value 4 <> Opt.help "(non-grep compat) How many threads in parallell")
     <*> Opt.switch (Opt.short 'l' <> Opt.long "files-with-matches" <> Opt.help "Show only filenames of matched files")
     <*> Opt.switch ( Opt.short 'r' <> Opt.long "recursive" <> Opt.help "IGNORED, always on")
     <*> Opt.switch ( Opt.short 'n' <> Opt.long "line-number" <> Opt.help "IGNORED, always on")
@@ -78,8 +75,8 @@ main = do
     allFileNames <- canonicalizePath (searchDir args) >>= listDir
     
     let fileNames = filter isPerlFileName allFileNames
-    
-    matches <- matchFiles (concurrency args) exprs fileNames
+
+    matches <- matchFiles exprs fileNames
     
     let found = mapMaybe anyMatches matches
 
@@ -108,10 +105,8 @@ showStats allFileNames matches found = do
         isError (_, (Left _)) = True
         isError _ = False
 
-matchFiles :: Int -> [Expr] -> [FilePath] -> IO [(FilePath, Either String [Match])]
-matchFiles threadsNum exprs paths = do
-    withTaskGroup threadsNum $ \g -> do
-        mapConcurrently g (matchFile exprs) paths
+matchFiles :: [Expr] -> [FilePath] -> IO [(FilePath, Either String [Match])]
+matchFiles exprs paths = mapM (matchFile exprs) paths
 
 matchFile :: [Expr] -> FilePath -> IO (FilePath, Either String [Match])
 matchFile exprs name = do
