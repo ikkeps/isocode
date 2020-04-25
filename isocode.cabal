@@ -51,6 +51,7 @@ executable isocode
   hs-source-dirs: src
   main-is:        Walk.hs
   build-depends:  isocode
+  other-modules:  Matcher, Parse, Transform
 
 test-suite test-all
   import: shared-properties
@@ -58,3 +59,4 @@ test-suite test-all
   type:       exitcode-stdio-1.0
   main-is:    Spec.hs
   build-depends: hspec >= 2.7.1 , isocode
+  other-modules: Matcher MatchingTests Parse

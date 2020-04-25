@@ -3,10 +3,11 @@
 
 Search Perl 5 sources by given code example.
 
-You can give it file or string as a pattern. Also, see `--help`.
+You can give it file or string as a pattern. Command line interface is compatible with `grep`, so in common cases you can replace `grep` with `isocode`.
+See `--help` for all supported options.
 
 ```
-$ isocode -v -p 'my ( $type, %args ) = @_; my $a = {}; bless( $a, $type);' ~/tmp/otrs/
+$ ./isocode -nr -e 'my ( $type, %args ) = @_; my $a = {}; bless( $a, $type);' ~/tmp/otrs/ -W
 Parsing...
 [ Id "my"
 , Block "("
@@ -98,15 +99,19 @@ You can get those from, e.g. `haskell-platform` packet in Ubuntu.
 # ./isocode --help
 isocode - search source tree by Perl code sample
 
-Usage: isocode (PATTERN_FILE | (-p|--pattern PATTERN)) SEARCH_DIR [-v|--verbose]
-               [-d|--debug-pattern] [-j|--concurrency ARG] [-o|--filename-only]
-  Searches for code similar to PATTERN_FILE or PATTERN in SEARCH_DIR
+Usage: isocode (PATTERN | (-e|--regexp PATTERN) | (-f|--file PATTERN_FILE))
+               SEARCH_DIR [-W|--verbose] [-Y|--debug] [-j|--concurrency ARG] 
+               [-l|--files-with-matches] [-r|--recursive] [-n|--line-number]
+  Searches for code similar to PATTERN_FILE or PATTERN in SEARCH_DIR.
 
 Available options:
-  -v,--verbose             spew debug information
-  -d,--debug-pattern       just parse the pattern and show, do not search for it
-  -j,--concurrency ARG     How many threads in parallell
-  -o,--filename-only       Show only filenames
+  -W,--verbose             (non grep compat) 'WHAT?' spew debug information
+  -Y,--debug               (non grep compat) 'WHY?' just parse the pattern and
+                           show, do not search for it
+  -j,--concurrency ARG     (non-grep compat) How many threads in parallell
+  -l,--files-with-matches  Show only filenames of matched files
+  -r,--recursive           IGNORED, always on
+  -n,--line-number         IGNORED, always on
   -h,--help                Show this help text
 ```
 

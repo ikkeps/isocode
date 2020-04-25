@@ -28,6 +28,8 @@ data Arguments = Arguments
   , justParse   :: Bool
   , concurrency :: Int
   , fileNamesOnly :: Bool
+  , recursive   :: Bool
+  , lineNumber  :: Bool
   }
 
 getArguments :: IO Arguments
@@ -36,25 +38,26 @@ getArguments = Opt.execParser commandLineParser
 argumentsParser :: Opt.Parser Arguments
 argumentsParser = Arguments
     <$> (
-            (Left <$> Opt.strArgument (Opt.metavar "PATTERN_FILE"))
-        <|> (Right <$> Opt.strOption (Opt.short 'p' <> Opt.long "pattern" <> Opt.metavar "PATTERN"))
+            (Right <$> Opt.strArgument (Opt.metavar "PATTERN"))
+        <|> (Right <$> Opt.strOption (Opt.short 'e' <> Opt.long "regexp" <> Opt.metavar "PATTERN"))
+        <|> (Left  <$> Opt.strOption (Opt.short 'f' <> Opt.long "file" <> Opt.metavar "PATTERN_FILE"))
         )
     <*> Opt.strArgument (Opt.metavar "SEARCH_DIR")
-    <*> Opt.switch (Opt.short 'v' <> Opt.long "verbose" <> Opt.help "spew debug information")
-    <*> Opt.switch (Opt.short 'd' <> Opt.long "debug-pattern" <> Opt.help "just parse the pattern and show, do not search for it")
-    <*> Opt.option Opt.auto (Opt.short 'j' <> Opt.long "concurrency" <> Opt.value 4 <> Opt.help "How many threads in parallell")
-    <*> Opt.switch (Opt.short 'o' <> Opt.long "filename-only" <> Opt.help "Show only filenames")
+    <*> Opt.switch (Opt.short 'W' <> Opt.long "verbose" <> Opt.help "(non grep compat) 'WHAT?' spew debug information")
+    <*> Opt.switch (Opt.short 'Y' <> Opt.long "debug" <> Opt.help "(non grep compat) 'WHY?' just parse the pattern and show, do not search for it")
+    <*> Opt.option Opt.auto (Opt.short 'j' <> Opt.long "concurrency" <> Opt.value 4 <> Opt.help "(non-grep compat) How many threads in parallell")
+    <*> Opt.switch (Opt.short 'l' <> Opt.long "files-with-matches" <> Opt.help "Show only filenames of matched files")
+    <*> Opt.switch ( Opt.short 'r' <> Opt.long "recursive" <> Opt.help "IGNORED, always on")
+    <*> Opt.switch ( Opt.short 'n' <> Opt.long "line-number" <> Opt.help "IGNORED, always on")
 
 commandLineParser :: Opt.ParserInfo Arguments
 commandLineParser = Opt.info (argumentsParser <**> Opt.helper)
    ( Opt.fullDesc
-  <> Opt.progDesc "Searches for code similar to PATTERN_FILE or PATTERN in SEARCH_DIR"
+  <> Opt.progDesc "Searches for code similar to PATTERN_FILE or PATTERN in SEARCH_DIR."
   <> Opt.header "isocode - search source tree by Perl code sample" )
 
-
 perlExtensions :: [String]
-perlExtensions = [".pl", ".pm", ".t"]
-
+perlExtensions = [".pl", ".pm", ".t", ".comp", ".inc", ".html"]
 
 main :: IO ()
 main = do
@@ -72,7 +75,7 @@ main = do
     when (justParse args) $ exitSuccess
     when (verbose args) $ putStrLn "Scanning..."
 
-    allFileNames <- listDir (searchDir args)
+    allFileNames <- canonicalizePath (searchDir args) >>= listDir
     
     let fileNames = filter isPerlFileName allFileNames
     
