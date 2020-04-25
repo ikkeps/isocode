@@ -88,9 +88,11 @@ firstChars (Choice exprs) = concat $ fmap firstChars exprs
 firstChars (Anything) = error "capture anything in beggining is not supported"
 
 isMappingOk :: [Extract] -> Bool
-isMappingOk extracts = isAllDifferrent (fmap fst uniq) && isAllDifferrent (fmap snd uniq)
+isMappingOk extracts = isAllDifferrent keys && isAllDifferrent values
     where
-        isAllDifferrent items = Set.size (Set.fromList items) == length items  
+        isAllDifferrent items = Set.size (Set.fromList items) == length items
+        keys = fmap fst uniq
+        values = fmap snd uniq
         uniq = Set.toList $ Set.fromList $ fmap (\(VarName a b) -> (a,b)) extracts
 
 

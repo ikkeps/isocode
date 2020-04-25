@@ -16,7 +16,7 @@ import Parse (parseFile, Expr)
 import Matcher (findMatches, Match(..))
 import System.Exit (exitSuccess)
 import Control.Concurrent.Async.Pool (withTaskGroup, mapConcurrently)
-import qualified Transform
+import Transform (transform)
 import qualified Data.ByteString.Internal as BI
 
 
@@ -64,13 +64,8 @@ main = do
     
     when (verbose args) $ putStrLn "Parsing..."
 
-    let eitherExprs = parseFile blob
-
-    exprs <- case eitherExprs of
-                  Right exprs -> return exprs
-                  Left msg -> fail msg --FIXME proper message
-
-    exprs <- return $ Transform.t exprs
+    exprs <- either fail return $ parseFile blob
+    exprs <- either fail return $ transform exprs
 
     when (verbose args || justParse args) $ pPrint exprs
     when (justParse args) $ exitSuccess
@@ -123,8 +118,7 @@ matchFile exprs name = do
             blob <- B.readFile name
             return $ findMatches blob exprs
 
-loadPattern (Left path) = B.readFile path
-loadPattern (Right source) = return $ BI.packChars source
+loadPattern pat = either B.readFile (return . BI.packChars) pat 
 
 showFileMatches :: (FilePath, [Match]) -> IO ()
 showFileMatches (path, matches) = mapM_ (putStrLn . showMatch) matches
