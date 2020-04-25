@@ -10,7 +10,7 @@ See `--help` for all supported options.
 
 Rules of matching:
 
-* All brackets should have pair in patter. E.g. you can not search for ` if ( `. Sorry :(
+* All brackets should have pair in pattern. E.g. you can not search for ` if ( `. Sorry :(
 * ` "abc" ` == ` 'abc' ` == `q(abc)` == `qq(abc)`. Even `"123"` == `123`
 * ` m/[a-z]/ ` == ` /[a-z]/ ` == ` "[a-z]" ` . But if there are any flags - it should be always a regexp.
 * `qw( 1 2  3 )` == `qw(1 2 3)` == `(1,2,3)` == `("1", 2, "3")` ...
