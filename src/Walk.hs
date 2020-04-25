@@ -142,4 +142,5 @@ listDir path = do
 showMatchingFilePaths :: [(FilePath, [Match])] -> IO ()
 showMatchingFilePaths matches = mapM_ (putStrLn . fst) matches
 
+-- FIXME check whenever output is actually a terminal
 emphasized s = (A.setSGRCode [A.SetColor A.Foreground A.Dull A.Blue]) ++ s ++ A.setSGRCode [A.Reset] 

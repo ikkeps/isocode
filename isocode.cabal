@@ -29,6 +29,7 @@ common shared-properties
                      , optparse-applicative >= 0.15.1.0
                      , async-pool >= 0.9.1
                      , containers >= 0.5.7.1
+                     , ansi-terminal >= 0.10.3
   ghc-options:
     -O2
     -W
