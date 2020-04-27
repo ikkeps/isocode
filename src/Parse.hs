@@ -35,7 +35,7 @@ space1 = skip isSpace >> space
 
 isNewLine w = w == 13 || w == 10
 
-isSpace w = isNewLine w || w == 32 
+isSpace w = isNewLine w || w == 32 || w == 9
 
 anyBracket :: Parser (B.ByteString, B.ByteString)
 anyBracket = choice $ fmap (\(start, end) -> (,end) <$> string start) [
@@ -95,7 +95,7 @@ src p = fst <$> match p
 
 parseId = Id <$> ( src $ (takeWhile1 $ inClass "a-zA-Z_") `sepBy1` (string "::"))
 
-canBeBracket w = isOperator w || inClass "@" w
+canBeBracket w = isOperator w || inClass "@'\"" w
 
 anySymbolBracket = anyBracket <|> (satisfy canBeBracket >>= \w -> return (B.singleton w, B.singleton w))
 
@@ -121,16 +121,19 @@ parseAnyRegExp = mRegExp <|> slashesRegexp
 
 parseQ = choice [
         (Val <$> fullyEscapedWithPrefix "qq"),
+        (Val <$> fullyEscapedWithPrefix "qx"),
         parseQw,
         (Val <$> (chr 'q' >> quoteBrackets))
         ]
 
 quoteBrackets = do
+    space
     (begin, end) <- anySymbolBracket
     stringWithEscapesTill (escapeOnly [B.head begin, B.head end]) end
 
 fullyEscapedWithPrefix prefix = do
     string prefix
+    space
     (_, end) <- anySymbolBracket
     stringWithEscapesTill fullEscapeSeq end
 

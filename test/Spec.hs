@@ -79,12 +79,13 @@ regexps = describe "regexps" $ do
     is "/k.e.k/" $ RegExp "k.e.k" ""
     isMany " =~ /k.e.k/ " $ [Op "=~", RegExp "k.e.k" ""]
     isMany "; /k.e.k/ " $ [Sep 59, RegExp "k.e.k" ""]
-    is "m//" $ RegExp "" ""
-    is "m[ abc ]" $ RegExp " abc " ""
+    is "m //" $ RegExp "" ""
+    is "m [ abc ]" $ RegExp " abc " ""
     isMany "$a / $b" $ [ Var 36 (Id "a"), Op "/",  Var 36 (Id "b")]
     isMany "a / $b" $ [ Id "a", Op "/",  Var 36 (Id "b")]
-    is "m/ab/cd" $ RegExp "ab" "cd"
+    is "m\t/ab/cd" $ RegExp "ab" "cd"
     is "m/[a-z]/io" $ RegExp "[a-z]" "io"
+    is "m '[a-z]'io" $ RegExp "[a-z]" "io"
 
 
 
@@ -106,19 +107,41 @@ values = describe "values" $ do
         is " \"wo\\nks\" " $ Val "wo\nks"
         is " \"wo\\\\ks\" " $ Val "wo\\ks"
         is " \"\" " $ Val ""
+    describe "weird quotes" $ do
+        is " `` " $ Val ""
+        is " `works` " $ Val "works"
+        is " `wo\\x21rks` " $ Val "wo!rks"
+        is " `wo\\041rks` " $ Val "wo!rks"
+        is " `wo\\c#rks` " $ Val "wo#rks"
+        is " `wo\\\"rks` " $ Val "wo\"rks"
+        is " `wo\\nks` " $ Val "wo\nks"
+        is " `wo\\\\ks` " $ Val "wo\\ks"
+        is " `` " $ Val ""
+
 
     describe "q" $ do
         is "q//" $ Val ""
-        is "q( abc )" $ Val " abc "
+        is "q ( abc )" $ Val " abc "
         is "q( ab\\(c\\) )" $ Val " ab(c) "
         is "q( ab\\nc\\ )" $ Val " ab\\nc\\ "
+        is "q ' ab\\nc\\ '" $ Val " ab\\nc\\ "
 
     describe "qq" $ do
         is "qq( abc )" $ Val " abc "
         is "qq( a\\)bc )" $ Val " a)bc "
         is "qq( \\(a\\)bc )" $ Val " (a)bc "
-        is "qq( ab\\nc )" $ Val " ab\nc "
-        is "qq[ abc ]" $ Val " abc "
+        is "qq ( ab\\nc )" $ Val " ab\nc "
+        is "qq [ abc ]" $ Val " abc "
+        is "qq ' abc '" $ Val " abc "
+
+    describe "qx" $ do
+        is "qx( abc )" $ Val " abc "
+        is "qx ( a\\)bc )" $ Val " a)bc "
+        is "qx( \\(a\\)bc )" $ Val " (a)bc "
+        is "qx( ab\\nc )" $ Val " ab\nc "
+        is "qx[ abc ]" $ Val " abc "
+        is "qx' abc '" $ Val " abc "
+
     describe "qw" $ do
         is "qw( ab cd )" $ Qw ["ab", "cd"]
         is "qw/ ab cd /" $ Qw ["ab", "cd"]
