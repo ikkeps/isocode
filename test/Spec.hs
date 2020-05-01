@@ -79,6 +79,7 @@ regexps = describe "regexps" $ do
         is "m/k.e.k/" $ RegExp "k.e.k" ""
         is "/k.e.k/" $ RegExp "k.e.k" ""
         isMany " =~ /k.e.k/ " $ [Op "=~", RegExp "k.e.k" ""]
+        isMany " !~ /k.e.k/ " $ [Op "!~", RegExp "k.e.k" ""]
         isMany "; /k.e.k/ " $ [Sep 59, RegExp "k.e.k" ""]
         is "m //" $ RegExp "" ""
         is "m [ abc ]" $ RegExp " abc " ""
