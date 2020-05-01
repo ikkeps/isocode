@@ -29,16 +29,25 @@ common shared-properties
                      , optparse-applicative >= 0.15.1.0
                      , containers >= 0.5.7.1
                      , ansi-terminal >= 0.10.3
-  ghc-options:
-    -O2
-    -W
-    -threaded
-    "-with-rtsopts=-N"
-    -static
-    -optl-static
-    -optl-pthread
-    -optc-fPIC
-    -fPIC
+
+  if os(darwin)
+    ghc-options:
+      -O2
+      -W
+      -threaded
+      "-with-rtsopts=-N"
+  else
+    ghc-options:
+      -O2
+      -W
+      -threaded
+      "-with-rtsopts=-N"
+      -static
+      -optl-static
+      -optl-pthread
+      -optc-fPIC
+      -fPIC
+
 
 executable isocode
   import: shared-properties
