@@ -22,7 +22,7 @@ import System.Exit (exitWith, ExitCode(..))
 
 data Arguments = Arguments
   { pattern     :: Either FilePath String
-  , searchDir   :: String
+  , searchPaths :: [String]
   , verbose     :: Bool
   , justParse   :: Bool
   , fileNamesOnly :: Bool
@@ -36,16 +36,16 @@ getArguments = Opt.execParser commandLineParser
 argumentsParser :: Opt.Parser Arguments
 argumentsParser = Arguments
     <$> (
-            (Right <$> Opt.strArgument (Opt.metavar "PATTERN"))
-        <|> (Right <$> Opt.strOption (Opt.short 'e' <> Opt.long "regexp" <> Opt.metavar "PATTERN"))
-        <|> (Left  <$> Opt.strOption (Opt.short 'f' <> Opt.long "file" <> Opt.metavar "PATTERN_FILE"))
+            (Right <$> Opt.strArgument (Opt.metavar "PATTERN" <> Opt.help "code sample to search for"))
+        <|> (Right <$> Opt.strOption (Opt.short 'e' <> Opt.long "regexp" <> Opt.metavar "PATTERN" <> Opt.help "code sample to search for"))
+        <|> (Left  <$> Opt.strOption (Opt.short 'f' <> Opt.long "file" <> Opt.metavar "PATTERN_FILE" <> Opt.help "path to code sample to search in"))
         )
-    <*> Opt.strArgument (Opt.metavar "SEARCH_DIR")
+    <*> (Opt.some $ Opt.strArgument (Opt.metavar "SEARCH_PATHS" <> Opt.help "files or dirs to search"))
     <*> Opt.switch (Opt.short 'W' <> Opt.long "verbose" <> Opt.help "(non grep compat) 'WHAT?' spew debug information")
     <*> Opt.switch (Opt.short 'Y' <> Opt.long "debug" <> Opt.help "(non grep compat) 'WHY?' just parse the pattern and show, do not search for it")
     <*> Opt.switch (Opt.short 'l' <> Opt.long "files-with-matches" <> Opt.help "Show only filenames of matched files")
-    <*> Opt.switch ( Opt.short 'r' <> Opt.long "recursive" <> Opt.help "IGNORED, always on")
-    <*> Opt.switch ( Opt.short 'n' <> Opt.long "line-number" <> Opt.help "IGNORED, always on")
+    <*> Opt.switch (Opt.short 'r' <> Opt.long "recursive" <> Opt.help "IGNORED, always on")
+    <*> Opt.switch (Opt.short 'n' <> Opt.long "line-number" <> Opt.help "IGNORED, always on")
 
 commandLineParser :: Opt.ParserInfo Arguments
 commandLineParser = Opt.info (argumentsParser <**> Opt.helper)
@@ -82,7 +82,7 @@ main = do
     when (justParse args) $ exitSuccess
     when (verbose args) $ putStrLn "Scanning..."
 
-    allFileNames <- canonicalizePath (searchDir args) >>= listDir
+    allFileNames <- concat <$> mapM (\path -> canonicalizePath path >>= recursiveFiles) (searchPaths args)
     
     let fileNames = filter isPerlFileName allFileNames
 
@@ -118,10 +118,10 @@ eitherFail e = either crash return e
             exitWith $ ExitFailure 2
 
 showStats :: [FilePath] -> [(FilePath, Either String [Match])] -> [(FilePath, [Match])] -> IO ()
-showStats allFileNames matches found = do  
+showStats allFileNames matches found = do
     let errors = filter isError matches
     mapM_ putStrLn [
-          "Files in directory: " ++ show (length allFileNames)
+          "Files: " ++ show (length allFileNames)
         , "Scanned " ++ show (length matches) ++ " files with " ++ show (length errors) ++ " errors"
         , "Total " ++ show (length found) ++ " files matches"
         , "Total " ++ show (sum $ fmap (length . snd) found) ++ " matches"
@@ -151,16 +151,14 @@ showFileMatches (path, matches) = mapM_ (putStrLn . showMatch) matches
         showMatch (Match orig (startPos, _) _extract) = emphasized (fileAndPosition startPos) ++ "\n" ++ BI.unpackChars orig
         fileAndPosition (line, pos) = path ++ ":" ++ show (line+1) ++ ":" ++ show (pos+1)
 
-listDir:: FilePath -> IO [FilePath]
-listDir path = do
-    subdirs <- (fmap (path </>)) <$> listDirectory path
-    concat <$> mapM maybeWalk subdirs
-    where
-        maybeWalk:: FilePath -> IO [FilePath]
-        maybeWalk d = do
-            exists <- doesDirectoryExist d
-            if exists then (listDir d) else return [d]
-
+recursiveFiles:: FilePath -> IO [FilePath]
+recursiveFiles path = do
+    isDir <- doesDirectoryExist path
+    if isDir then do
+        subdirs <- (fmap (path </>)) <$> listDirectory path
+        concat <$> mapM recursiveFiles subdirs
+    else
+        return [path]
 
 showMatchingFilePaths :: [(FilePath, [Match])] -> IO ()
 showMatchingFilePaths matches = mapM_ (putStrLn . fst) matches

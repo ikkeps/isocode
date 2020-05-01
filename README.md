@@ -73,11 +73,15 @@ I just gave up setting up ghc no my machine to build static binary, so its built
 isocode - search source tree by Perl code sample
 
 Usage: isocode (PATTERN | (-e|--regexp PATTERN) | (-f|--file PATTERN_FILE))
-               SEARCH_DIR [-W|--verbose] [-Y|--debug] [-l|--files-with-matches] 
-               [-r|--recursive] [-n|--line-number]
+               SEARCH_PATHS [-W|--verbose] [-Y|--debug] 
+               [-l|--files-with-matches] [-r|--recursive] [-n|--line-number]
   Searches for code similar to PATTERN_FILE or PATTERN in SEARCH_DIR.
 
 Available options:
+  PATTERN                  code sample to search for
+  -e,--regexp PATTERN      code sample to search for
+  -f,--file PATTERN_FILE   path to code sample to search in
+  SEARCH_PATHS             files or dirs to search
   -W,--verbose             (non grep compat) 'WHAT?' spew debug information
   -Y,--debug               (non grep compat) 'WHY?' just parse the pattern and
                            show, do not search for it
