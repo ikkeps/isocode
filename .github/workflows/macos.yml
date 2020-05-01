@@ -40,3 +40,8 @@ jobs:
 
     - name: just run help
       run: ./isocode --help
+
+    - name: Upload binary artifact
+      uses: actions/upload-artifact@v2
+      with:
+        path: ./isocode 
