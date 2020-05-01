@@ -75,17 +75,27 @@ vars = describe "vars" $ do
 
 
 regexps = describe "regexps" $ do
-    is "m/k.e.k/" $ RegExp "k.e.k" ""
-    is "/k.e.k/" $ RegExp "k.e.k" ""
-    isMany " =~ /k.e.k/ " $ [Op "=~", RegExp "k.e.k" ""]
-    isMany "; /k.e.k/ " $ [Sep 59, RegExp "k.e.k" ""]
-    is "m //" $ RegExp "" ""
-    is "m [ abc ]" $ RegExp " abc " ""
-    isMany "$a / $b" $ [ Var 36 (Id "a"), Op "/",  Var 36 (Id "b")]
-    isMany "a / $b" $ [ Id "a", Op "/",  Var 36 (Id "b")]
-    is "m\t/ab/cd" $ RegExp "ab" "cd"
-    is "m/[a-z]/io" $ RegExp "[a-z]" "io"
-    is "m '[a-z]'io" $ RegExp "[a-z]" "io"
+    describe "m or //" $ do
+        is "m/k.e.k/" $ RegExp "k.e.k" ""
+        is "/k.e.k/" $ RegExp "k.e.k" ""
+        isMany " =~ /k.e.k/ " $ [Op "=~", RegExp "k.e.k" ""]
+        isMany "; /k.e.k/ " $ [Sep 59, RegExp "k.e.k" ""]
+        is "m //" $ RegExp "" ""
+        is "m [ abc ]" $ RegExp " abc " ""
+        isMany "$a / $b" $ [ Var 36 (Id "a"), Op "/",  Var 36 (Id "b")]
+        isMany "a / $b" $ [ Id "a", Op "/",  Var 36 (Id "b")]
+        is "m\t/ab/cd" $ RegExp "ab" "cd"
+        is "m/[a-z]/io" $ RegExp "[a-z]" "io"
+        is "m '[a-z]'io" $ RegExp "[a-z]" "io"
+    describe "qr" $ do
+        is "qr/k.e.k/" $ RegExp "k.e.k" ""
+        isMany " =~ qr(k.e.k) " $ [Op "=~", RegExp "k.e.k" ""]
+        isMany "; qr/k.e.k/ " $ [Sep 59, RegExp "k.e.k" ""]
+        is "qr //" $ RegExp "" ""
+        is "qr [ abc ]" $ RegExp " abc " ""
+        is "qr\t/ab/cd" $ RegExp "ab" "cd"
+        is "qr/[a-z]/io" $ RegExp "[a-z]" "io"
+        is "qr '[a-z]'io" $ RegExp "[a-z]" "io"
 
 
 

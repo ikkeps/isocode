@@ -102,18 +102,18 @@ anySymbolBracket = anyBracket <|> (satisfy canBeBracket >>= \w -> return (B.sing
 parseRegExp Nothing = parseAnyRegExp
 parseRegExp (Just (Op _) ) = parseAnyRegExp
 parseRegExp (Just (Sep _)) = parseAnyRegExp
-parseRegExp (Just _) = mRegExp
+parseRegExp (Just _) = opRegExp
 
-mRegExp = do
-    chr 'm'
+opRegExp = do
+    string "m" <|> string "qr"
     RegExp <$> quoteBrackets
            <*> regexpFlags
 
 regexpFlags = Data.Attoparsec.ByteString.takeWhile (inClass "a-z")
 
-parseAnyRegExp = mRegExp <|> slashesRegexp
+parseAnyRegExp = opRegExp <|> slashesRegExp
     where
-        slashesRegexp = do
+        slashesRegExp = do
             chr '/'
             re <- stringWithEscapesTill (escapeOnly [ BI.c2w '/']) "/"
             f <- regexpFlags
