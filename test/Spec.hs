@@ -3,6 +3,7 @@
 import           Test.Hspec
 
 import Data.String (fromString)
+import Data.Either (isLeft)
 import Parse
 
 import qualified MatchingTests as M
@@ -25,6 +26,7 @@ is source result = it source $ parseFile (fromString source) `shouldBe` (Right [
 isMany :: String -> [Expr] -> Spec
 isMany source result = it source $ parseFile (fromString source) `shouldBe` (Right result)
 
+isFail source = it source $ parseFile (fromString source) `shouldSatisfy` isLeft
 
 someExprs = describe "expressions" $ do
     isMany " if ( $a == $b ) { print 'abc'; }" [
@@ -103,6 +105,7 @@ regexps = describe "regexps" $ do
 
 values = describe "values" $ do
     describe "single quotes" $ do
+        isFail " 'work "
         is "'works'" $ Val "works"
         is " 'wor\\'ks' " $ Val "wor'ks"
         is " 'wor\\nks' " $ Val "wor\\nks"
@@ -110,6 +113,7 @@ values = describe "values" $ do
         is " '' " $ Val ""
 
     describe "double quotes" $ do
+        isFail " \"work "
         is " \"\" " $ Val ""
         is  " \"works\" " $ Val "works"
         is  " \"wo\\x21rks\" " $ Val "wo!rks"
@@ -120,6 +124,7 @@ values = describe "values" $ do
         is " \"wo\\\\ks\" " $ Val "wo\\ks"
         is " \"\" " $ Val ""
     describe "weird quotes" $ do
+        isFail " `test "
         is " `` " $ Val ""
         is " `works` " $ Val "works"
         is " `wo\\x21rks` " $ Val "wo!rks"

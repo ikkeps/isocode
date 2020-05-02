@@ -10,6 +10,7 @@ import Data.Attoparsec.ByteString
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as BI
 import Numeric (readHex, readOct)
+import Control.Monad (when)
 
 
 data Expr = Id B.ByteString    -- abcde
@@ -237,11 +238,14 @@ stringWithEscapesTill :: Parser W.Word8 -> W.Word8 -> Parser B.ByteString
 stringWithEscapesTill escapeSeq end = scan
     where
         scan = do
-            choice [
-                  (word8 end >> return "")
-                , (B.cons <$> tryEscape <*> scan)
-                , (B.append <$> (takeTill endOrSlash) <*> scan)
-                ]
+            eof <- atEnd
+            when eof $ fail "unexpected EOF while parsing string"
+            (word8 end >> return "") <|> (
+                B.append
+                    <$> ( (B.singleton <$> tryEscape) <|> (takeTill endOrSlash))
+                    <*> scan
+                )
+            
         endOrSlash w = w == end || w == (BI.c2w '\\')
         tryEscape = do
             chr '\\'
