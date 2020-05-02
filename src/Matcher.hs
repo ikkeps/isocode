@@ -64,6 +64,7 @@ generate (Choice exprs) = choice $ fmap generate exprs
 generate Anything = parseManyExprs >> return []
 generate qw@(Qw _) = qw `sameAs` parseQw
 generate re@(RegExp _ _) = re `sameAs` parseAnyRegExp
+generate tr@(Tr _ _ _) = tr `sameAs` parseTr
 
 sameAs orig parser = do
     v <- parser
@@ -73,11 +74,12 @@ sameAs orig parser = do
 
 generateMany :: [Expr] -> Parser [Extract]
 generateMany exprs = do
-    res <- mapM (\e -> ignored >> generate e) exprs -- first ignored is consumed, but its fine
+    res <- mapM (\e -> ignored >> generate e) exprs -- first ignored is consumed, but its fine and we already parsed it before calling this func
     return $ concat res
 
 str2bs s = B.pack $ fmap BI.c2w s
 
+-- FIXME move this to Parser?
 firstChars :: Expr -> [W.Word8]
 firstChars (Id a) = [B.head a]
 firstChars (Op a) = [B.head a]
@@ -91,6 +93,7 @@ firstChars (Choice exprs) = concat $ fmap firstChars exprs
 firstChars (Anything) = error "capture anything in beggining is not supported"
 firstChars (Qw _) = fmap BI.c2w ['q']
 firstChars (RegExp _ _) = fmap BI.c2w ['m', '/']
+firstChars (Tr _ _ _) = fmap BI.c2w ['t', 'y']
 
 isMappingOk :: [Extract] -> Bool
 isMappingOk extracts = isAllDifferrent keys && isAllDifferrent values
@@ -128,7 +131,4 @@ matchAndSource shouldMatch = do
     if isMappingOk extracts
         then return $ Extract orig extracts
         else fail "variables inconsistent"
-
-countNewlines :: B.ByteString -> Int
-countNewlines = B.count 13
 

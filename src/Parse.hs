@@ -20,6 +20,7 @@ data Expr = Id B.ByteString    -- abcde
           | Val B.ByteString -- 123.0 / "123abc" / '123abc' / <<EOF..EOF
           | Qw [B.ByteString] -- qw(...)
           | RegExp B.ByteString B.ByteString -- m/.../abc
+          | Tr B.ByteString B.ByteString B.ByteString -- tr/abc/def/g
 -- Here goes matching stuff
           | Optional Expr
           | Choice [Expr] 
@@ -66,6 +67,7 @@ parseManyExprs = do
 parseExpr :: Maybe Expr -> Parser Expr
 parseExpr prev = choice [
               parseRegExp prev
+            , parseTr
             , parseQ
             , parseId
             , parseVar -- $.. @... \...
@@ -97,7 +99,10 @@ parseId = Id <$> ( src $ (takeWhile1 $ inClass "a-zA-Z_") `sepBy1` (string "::")
 
 canBeBracket w = isOperator w || inClass "@'\"" w
 
-anySymbolBracket = anyBracket <|> (satisfy canBeBracket >>= \w -> return (B.singleton w, B.singleton w))
+anyOneSymbolBracket = satisfy canBeBracket
+
+-- FIXME make it return just char / word?
+anySymbolBracket = anyBracket <|> (anyOneSymbolBracket >>= \w -> return (B.singleton w, B.singleton w))
 
 parseRegExp Nothing = parseAnyRegExp
 parseRegExp (Just (Op _) ) = parseAnyRegExp
@@ -106,7 +111,7 @@ parseRegExp (Just _) = opRegExp
 
 opRegExp = do
     string "m" <|> string "qr"
-    RegExp <$> quoteBrackets
+    RegExp <$> (space >> quoteBrackets)
            <*> regexpFlags
 
 regexpFlags = Data.Attoparsec.ByteString.takeWhile (inClass "a-z")
@@ -123,11 +128,34 @@ parseQ = choice [
         (Val <$> fullyEscapedWithPrefix "qq"),
         (Val <$> fullyEscapedWithPrefix "qx"),
         parseQw,
-        (Val <$> (chr 'q' >> quoteBrackets))
-        ]
+        (Val <$> (chr 'q' >> space >> quoteBrackets))
+    ]
+
+-- This one is tricky as there could be things like tr [abc] /def/ BUT tr"abc"def" and tr/abc/def/
+parseTr = do
+    string "tr" <|> string "y" -- FIXME "s/// ??"
+    space
+    withOneSymbolBracket <|> withRegularBrackets
+    where
+        withOneSymbolBracket = do
+            br <- anyOneSymbolBracket
+            Tr <$> properEscaping br
+               <*> properEscaping br
+               <*> regexpFlags
+        withRegularBrackets = do
+            (_, end) <- anyBracket
+            a <- stringWithEscapesTill fullEscapeSeq end
+            space
+            (_, end) <- anySymbolBracket
+            b <- properEscaping $ B.head end
+            flags <- regexpFlags
+            return $ Tr a b flags
+        properEscaping end = if end == (BI.c2w '\'') then do
+                stringWithEscapesTill (escapeOnly [end, (BI.c2w '\\')]) $ B.singleton end
+            else do
+                stringWithEscapesTill fullEscapeSeq $ B.singleton end
 
 quoteBrackets = do
-    space
     (begin, end) <- anySymbolBracket
     stringWithEscapesTill (escapeOnly [B.head begin, B.head end]) end
 

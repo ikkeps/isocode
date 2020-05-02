@@ -16,6 +16,7 @@ main = hspec $ do
     blocks
     regexps
     someExprs
+    replaces
     M.spec
 
 is :: String -> Expr -> Spec
@@ -184,6 +185,7 @@ ops = describe "ops" $ do
     is " + " $ Op "+"
     is " << " $ Op "<<"
     isMany "a ? b : c" [ Id "a", Op "?", Id "b", Op ":", Id "c" ] 
+    isMany "a ? b:c" [ Id "a", Op "?", Id "b", Op ":", Id "c" ] 
     isMany "a==b" [Id "a", Op "==", Id "b"]
     -- FIXME more
 
@@ -191,3 +193,21 @@ blocks = describe "blocks" $ do
     is " { a + b }" $ Block "{" [ Id "a", Op "+", Id "b" ] "}"
     is " ( a , b )" $ Block "(" [Id "a", Sep 44, Id "b" ] ")"
     is " [ 123 ] " $ Block "[" [Val "123"] "]"
+
+
+replaces = describe "tr / y" $ do
+    describe "escaping" $ do
+        is "tr'\\\\ab\\nc'def'g" $ Tr "\\ab\\nc" "def" "g"
+        is "tr/\\\\ab\\nc/def/g" $ Tr "\\ab\nc" "def" "g"
+    describe "regular" $ do
+        is "tr/abc/def/g " $ Tr "abc" "def" "g"
+        is "tr /abc/def/ " $ Tr "abc" "def" ""
+        is "y/abc/def/g " $ Tr "abc" "def" "g"
+        is "y /abc/def/ " $ Tr "abc" "def" ""
+    describe "weird" $ do
+        is "tr(abc) [def]g" $ Tr "abc" "def" "g"
+        is "tr(abc) /def/g" $ Tr "abc" "def" "g"
+        is "tr(abc) 'def'g" $ Tr "abc" "def" "g"
+        is "y(abc) [def]g" $ Tr "abc" "def" "g"
+        is "y(abc) /def/g" $ Tr "abc" "def" "g"
+        is "y(abc) 'def'g" $ Tr "abc" "def" "g"
