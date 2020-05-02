@@ -163,7 +163,7 @@ values = describe "values" $ do
         is "qw[ kek \n \n lol ]" $ Qw ["kek", "lol"]
 
     describe "here document" $ do -- Note: newline is part of value in perl
---- FIXME EOF on marker does not work        is "<<SQL;\nabc\nSQL" $ Val "abc\n"  -- should fail
+        is "<<SQL;\nabc\nSQL" $ Val "abc"
         is "<<SQL;\nabc\nSQL\n" $ Val "abc\n"
         is "<<'SQL';\nabc\nSQL\n" $ Val "abc\n"
         is "<<'SQL';\na\\nbc\nSQL\n" $ Val "a\\nbc\n"

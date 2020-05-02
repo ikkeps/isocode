@@ -15,7 +15,7 @@ import Numeric (readHex, readOct)
 data Expr = Id B.ByteString    -- abcde
           | Op B.ByteString -- */+/-.<> => ->
           | Var W.Word8 Expr      -- @* / $* / %*
-          | Block B.ByteString [Expr] B.ByteString -- {*} / [] / ()
+          | Block B.ByteString [Expr] B.ByteString -- {*} / [] / () FIME: words?
           | Sep W.Word8   -- ; or ,
           | Val B.ByteString -- 123.0 / "123abc" / '123abc' / <<EOF..EOF
           | Qw [B.ByteString] -- qw(...)
@@ -37,13 +37,6 @@ space1 = skip isSpace >> space
 isNewLine w = w == 13 || w == 10
 
 isSpace w = isNewLine w || w == 32 || w == 9
-
-anyBracket :: Parser (B.ByteString, B.ByteString)
-anyBracket = choice $ fmap (\(start, end) -> (,end) <$> string start) [
-          ("(", ")")
-        , ("[", "]")
-        , ("{", "}")
-    ]
 
 parseSep :: Parser Expr
 parseSep = Sep <$> (chr ';' <|> chr ',')
@@ -74,10 +67,9 @@ parseExpr prev = choice [
             , parseBlock -- [ ], ( )
             , parseVal -- 1231 "abc"
             , parseSep
-            , hereDocument
+            , parseHereDocument
             , parseOp  -- + / -
             , parsePrototype -- ($$@$) kind of stuff
-            -- FIXME parse tr/../../
             -- FIXME string interpolation extraction
             -- FIXME  =smth
             ]
@@ -99,10 +91,16 @@ parseId = Id <$> ( src $ (takeWhile1 $ inClass "a-zA-Z_") `sepBy1` (string "::")
 
 canBeBracket w = isOperator w || inClass "@'\"" w
 
+anyBracket :: Parser (W.Word8, W.Word8)
+anyBracket = choice $ fmap (\(start, end) -> (,BI.c2w end) <$> word8 (BI.c2w start)) [
+          ('(', ')')
+        , ('[', ']')
+        , ('{', '}')
+    ]
+
 anyOneSymbolBracket = satisfy canBeBracket
 
--- FIXME make it return just char / word?
-anySymbolBracket = anyBracket <|> (anyOneSymbolBracket >>= \w -> return (B.singleton w, B.singleton w))
+anySymbolBracket = anyBracket <|> (anyOneSymbolBracket >>= \w -> return (w, w))
 
 parseRegExp Nothing = parseAnyRegExp
 parseRegExp (Just (Op _) ) = parseAnyRegExp
@@ -120,7 +118,7 @@ parseAnyRegExp = opRegExp <|> slashesRegExp
     where
         slashesRegExp = do
             chr '/'
-            re <- stringWithEscapesTill (escapeOnly [ BI.c2w '/']) "/"
+            re <- stringWithEscapesTill (escapeOnly [ BI.c2w '/']) (BI.c2w '/')
             f <- regexpFlags
             return $ RegExp re f
 
@@ -147,17 +145,17 @@ parseTr = do
             a <- stringWithEscapesTill fullEscapeSeq end
             space
             (_, end) <- anySymbolBracket
-            b <- properEscaping $ B.head end
+            b <- properEscaping end
             flags <- regexpFlags
             return $ Tr a b flags
         properEscaping end = if end == (BI.c2w '\'') then do
-                stringWithEscapesTill (escapeOnly [end, (BI.c2w '\\')]) $ B.singleton end
+                stringWithEscapesTill (escapeOnly [end, (BI.c2w '\\')]) end
             else do
-                stringWithEscapesTill fullEscapeSeq $ B.singleton end
+                stringWithEscapesTill fullEscapeSeq end
 
 quoteBrackets = do
     (begin, end) <- anySymbolBracket
-    stringWithEscapesTill (escapeOnly [B.head begin, B.head end]) end
+    stringWithEscapesTill (escapeOnly [begin, end]) end
 
 fullyEscapedWithPrefix prefix = do
     string prefix
@@ -175,12 +173,15 @@ parseVal = do
     where
         num = src $ takeWhile1 isPartOfNumber
 
-doubleQuotedString = escapedString "\"" fullEscapeSeq "\""
-singleQuotedString = escapedString "\'" (escapeOnly [BI.c2w '\'']) "\'"
-backQuotedString = escapedString "`" fullEscapeSeq "`"
+doubleQuotedString = escapedString '\"' fullEscapeSeq
+singleQuotedString = escapedString '\'' (escapeOnly [BI.c2w '\''])
+backQuotedString = escapedString '`' fullEscapeSeq
 
-hereDocument :: Parser Expr
-hereDocument = do
+escapedString :: Char -> Parser W.Word8 -> Parser B.ByteString
+escapedString quote escapeSeq = chr quote >> stringWithEscapesTill escapeSeq (BI.c2w quote)
+
+parseHereDocument :: Parser Expr
+parseHereDocument = do
     string "<<"
     (marker, esc) <- choice [
         noQuotes,
@@ -188,12 +189,19 @@ hereDocument = do
         ( (, fullEscapeSeq) <$> doubleQuotedString)
         ]
     space >> chr ';' >> space
-    result <- stringWithEscapesTill esc $ B.concat ["\n", marker, "\n"] -- FIXME: SHOULD END EITHER WITH NL OR EOF :(
-    return $ Val $ B.concat [result, "\n"] -- Returning \n :(
+    Val <$> withEscapesTillMarker esc marker
     where
         noQuotes = do
             Id marker <- parseId
             return $ (marker, fullEscapeSeq)
+        withEscapesTillMarker esc marker = scan
+            where
+                scan = do
+                    choice [
+                          (chr '\n' >> string marker >> ( (chr '\n' >> return "\n") <|> (endOfInput >> return "") ))
+                        , (B.cons <$> esc <*> scan) -- FIXME SLOOW
+                        , (B.cons <$> anyWord8 <*> scan) -- FIXME SLOOW
+                        ]
 
 chr c = word8 $ BI.c2w c
 
@@ -217,20 +225,17 @@ parseBlock :: Parser Expr
 parseBlock = do
     (start, end) <- anyBracket
     exprs <- parseManyExprs
-    string end
-    return $ Block start exprs end
+    word8 end
+    return $ Block (B.singleton start) exprs (B.singleton end)
 
 ignored = skipMany (space1 <|> comment)
 
-escapedString :: B.ByteString -> Parser W.Word8 -> B.ByteString -> Parser B.ByteString
-escapedString begin escapeSeq end = string begin >> stringWithEscapesTill escapeSeq end
-      
-stringWithEscapesTill :: Parser W.Word8 -> B.ByteString -> Parser B.ByteString
+stringWithEscapesTill :: Parser W.Word8 -> W.Word8 -> Parser B.ByteString
 stringWithEscapesTill escapeSeq end = scan
     where 
         scan = do
             choice [
-                  (string end >> return "")
+                  (word8 end >> return "")
                 , (B.cons <$> escapeSeq <*> scan) -- FIXME SLOOW
                 , (B.cons <$> anyWord8 <*> scan) -- FIXME SLOOW
                 ]
