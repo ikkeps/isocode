@@ -52,7 +52,7 @@ generate orig@(Var kind _expr) = do
     word8 kind
     origExpr <- parseExpr Nothing -- <- actually parse anything
     return [VarName (str2bs $ show orig) (str2bs $ show (Var kind origExpr))] -- Lame mapping
-generate val@(Val _) = val `sameAs` parseVal
+generate val@(Val _) = val `sameAs` (parseVal <|> parseQ <|> parseHereDocument)
 generate (Block begin exprs end) = do
     string begin
     extracts <- generateMany exprs

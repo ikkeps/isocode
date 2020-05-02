@@ -110,7 +110,7 @@ values = describe "values" $ do
         is " '' " $ Val ""
 
     describe "double quotes" $ do
-        is " '' " $ Val ""
+        is " \"\" " $ Val ""
         is  " \"works\" " $ Val "works"
         is  " \"wo\\x21rks\" " $ Val "wo!rks"
         is  " \"wo\\041rks\" " $ Val "wo!rks"

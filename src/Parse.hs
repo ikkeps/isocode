@@ -199,9 +199,12 @@ parseHereDocument = do
                 scan = do
                     choice [
                           (chr '\n' >> string marker >> ( (chr '\n' >> return "\n") <|> (endOfInput >> return "") ))
-                        , (B.cons <$> esc <*> scan) -- FIXME SLOOW
+                        , (B.cons <$> tryEscape <*> scan) -- FIXME SLOOW
                         , (B.cons <$> anyWord8 <*> scan) -- FIXME SLOOW
                         ]
+                tryEscape = do
+                    chr '\\'
+                    esc <|> return (BI.c2w '\\')
 
 chr c = word8 $ BI.c2w c
 
@@ -232,17 +235,21 @@ ignored = skipMany (space1 <|> comment)
 
 stringWithEscapesTill :: Parser W.Word8 -> W.Word8 -> Parser B.ByteString
 stringWithEscapesTill escapeSeq end = scan
-    where 
+    where
         scan = do
             choice [
                   (word8 end >> return "")
-                , (B.cons <$> escapeSeq <*> scan) -- FIXME SLOOW
-                , (B.cons <$> anyWord8 <*> scan) -- FIXME SLOOW
+                , (B.cons <$> tryEscape <*> scan)
+                , (B.append <$> (takeTill endOrSlash) <*> scan)
                 ]
+        endOrSlash w = w == end || w == (BI.c2w '\\')
+        tryEscape = do
+            chr '\\'
+            escapeSeq <|> return (BI.c2w '\\')
+
 
 fullEscapeSeq :: Parser W.Word8
 fullEscapeSeq = do
-    chr '\\'
     choice [
         controlCode
       , (string "c" >> anyWord8)
@@ -272,9 +279,7 @@ fullEscapeSeq = do
             return code
 
 escapeOnly :: [W.Word8] -> Parser W.Word8
-escapeOnly symbols = do
-    chr '\\'
-    satisfy (\w -> elem w symbols)
+escapeOnly symbols = satisfy (\w -> elem w symbols)
 
 parseWhole :: Parser [Expr]
 parseWhole = do
