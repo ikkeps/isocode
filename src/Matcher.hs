@@ -31,8 +31,8 @@ generateMatcher exprs = do
     let shouldMatch = generateMany exprs
     pieces <- many' $ do
         skip <- fastForward
-        mbMatch <- matchAndSource shouldMatch <|> skipWord
-        return $ [skip, mbMatch]
+        mbMatch <- matchAndSource shouldMatch <|> skipWord -- FIXME !!!! skip properly parsed first expr. Maybe match should return advance?
+        return [skip, mbMatch]
     ignored
     return $ piecesToMatches $ concat pieces
     where
