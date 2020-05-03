@@ -148,7 +148,7 @@ loadPattern pat = either B.readFile (return . BI.packChars) pat
 showFileMatches :: (FilePath, [Match]) -> IO ()
 showFileMatches (path, matches) = mapM_ (putStrLn . showMatch) matches
     where
-        showMatch (Match orig (startPos, _) _extract) = emphasized (fileAndPosition startPos) ++ "\n" ++ BI.unpackChars orig
+        showMatch (Match orig (startPos, _) _extract) = emphasized (fileAndPosition startPos) ++ "\n" ++ BI.unpackChars orig -- ++ "\n" ++ (intercalate "\n" $ fmap show extract)
         fileAndPosition (line, pos) = path ++ ":" ++ show (line+1) ++ ":" ++ show (pos+1)
 
 recursiveFiles:: FilePath -> IO [FilePath]

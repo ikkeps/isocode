@@ -48,10 +48,10 @@ generate :: Expr -> Parser [Extract]
 generate (Id a) = string a >> return []
 generate (Op a) = string a >> return []
 generate (Sep a) = word8 a >> return []
-generate orig@(Var kind _expr) = do
+generate origVar@(Var kind _) = do
     word8 kind
-    origExpr <- parseExpr Nothing -- <- actually parse anything
-    return [VarName (str2bs $ show orig) (str2bs $ show (Var kind origExpr))] -- Lame mapping
+    parsedExpr <- parseExpr Nothing -- <- actually parse anything
+    return [ VarName (variableId origVar) (variableId $ Var kind parsedExpr) ]
 generate val@(Val _) = val `sameAs` (parseVal <|> parseQ <|> parseHereDocument)
 generate (Block begin exprs end) = do
     string begin
@@ -71,6 +71,14 @@ sameAs orig parser = do
     if orig == v
         then return []
         else fail "Differrent value"
+
+-- Getting most inner Id from inside of variable, e.g. ${%abc} -> "abc"
+-- FIXME ignoring actual type of variable :(
+variableId :: Expr -> B.ByteString
+variableId (Var _ inner) = variableId inner
+variableId (Block "{" [inner] "}") = variableId inner   -- Even ${some_var_name} is valid way to write $some_var_name
+variableId (Id id) = id
+variableId other = str2bs $ show other
 
 generateMany :: [Expr] -> Parser [Extract]
 generateMany exprs = do
