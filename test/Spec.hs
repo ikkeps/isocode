@@ -253,15 +253,19 @@ blocks = describe "blocks" $ do
     is " [ 123 ] " $ Block "[" [Val "123"] "]"
 
 
-replaces = describe "tr / y" $ do
+replaces = describe "tr / y / s" $ do
     describe "escaping" $ do
         is "tr'\\\\ab\\nc'def'g" $ Tr "\\ab\\nc" "def" "g"
         is "tr/\\\\ab\\nc/def/g" $ Tr "\\ab\nc" "def" "g"
+        is "s'\\\\ab\\nc'def'g" $ Sr "\\ab\\nc" "def" "g"
+        is "s/\\\\ab\\nc/def/g" $ Sr "\\ab\nc" "def" "g"
     describe "regular" $ do
         is "tr/abc/def/g " $ Tr "abc" "def" "g"
         is "tr /abc/def/ " $ Tr "abc" "def" ""
         is "y/abc/def/g " $ Tr "abc" "def" "g"
         is "y /abc/def/ " $ Tr "abc" "def" ""
+        is "s/abc/def/g " $ Sr "abc" "def" "g"
+        is "s /abc/def/ " $ Sr "abc" "def" ""
     describe "weird" $ do
         is "tr(abc) [def]g" $ Tr "abc" "def" "g"
         is "tr(abc) /def/g" $ Tr "abc" "def" "g"
@@ -269,3 +273,6 @@ replaces = describe "tr / y" $ do
         is "y(abc) [def]g" $ Tr "abc" "def" "g"
         is "y(abc) /def/g" $ Tr "abc" "def" "g"
         is "y(abc) 'def'g" $ Tr "abc" "def" "g"
+        is "s(abc) [def]g" $ Sr "abc" "def" "g"
+        is "s(abc) /def/g" $ Sr "abc" "def" "g"
+        is "s(abc) 'def'g" $ Sr "abc" "def" "g"

@@ -22,6 +22,7 @@ data Expr = Id B.ByteString    -- abcde
           | Qw [B.ByteString] -- qw(...)
           | RegExp B.ByteString B.ByteString -- m/.../abc
           | Tr B.ByteString B.ByteString B.ByteString -- tr/abc/def/g
+          | Sr B.ByteString B.ByteString B.ByteString -- s/abc/def/g
 -- Here goes matching stuff
           | Optional Expr
           | Choice [Expr] 
@@ -61,6 +62,7 @@ parseManyExprs = do
 parseExpr :: Maybe Expr -> Parser Expr
 parseExpr prev = choice [
               parseRegExp prev
+            , parseSr
             , parseTr
             , parseQ
             , parseId
@@ -140,12 +142,21 @@ parseQ = choice [
 -- This one is tricky as there could be things like tr [abc] /def/ BUT tr"abc"def" and tr/abc/def/
 parseTr = do
     string "tr" <|> string "y" -- FIXME "s/// ??"
+    threeComp Tr
+
+parseSr = do
+    chr 's'
+    threeComp Sr
+
+-- for all s/abc/def/g and tr [abc] [def]gh  kind of things without prefix
+threeComp :: (BI.ByteString -> BI.ByteString -> BI.ByteString ->Expr) -> Parser Expr
+threeComp construct = do
     space
     withOneSymbolBracket <|> withRegularBrackets
     where
         withOneSymbolBracket = do
             br <- anyOneSymbolBracket
-            Tr <$> properEscaping br
+            construct <$> properEscaping br
                <*> properEscaping br
                <*> regexpFlags
         withRegularBrackets = do
@@ -155,7 +166,7 @@ parseTr = do
             (_, end) <- anySymbolBracket
             b <- properEscaping end
             flags <- regexpFlags
-            return $ Tr a b flags
+            return $ construct a b flags
         properEscaping end = if end == (BI.c2w '\'') then do
                 stringWithEscapesTill (escapeOnly [end, (BI.c2w '\\')]) end
             else do

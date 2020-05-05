@@ -65,6 +65,7 @@ generate Anything = parseManyExprs >> return []
 generate qw@(Qw _) = qw `sameAs` parseQw
 generate re@(RegExp _ _) = re `sameAs` parseAnyRegExp
 generate tr@(Tr _ _ _) = tr `sameAs` parseTr
+generate sr@(Sr _ _ _) = sr `sameAs` parseSr
 
 sameAs orig parser = do
     v <- parser
@@ -102,6 +103,7 @@ firstChars (Anything) = error "capture anything in beggining is not supported"
 firstChars (Qw _) = fmap BI.c2w ['q']
 firstChars (RegExp _ _) = fmap BI.c2w ['m', '/']
 firstChars (Tr _ _ _) = fmap BI.c2w ['t', 'y']
+firstChars (Sr _ _ _) = fmap BI.c2w ['s']
 
 isMappingOk :: [Extract] -> Bool
 isMappingOk extracts = isAllDifferrent keys && isAllDifferrent values
