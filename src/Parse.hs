@@ -75,8 +75,15 @@ parseExpr prev = choice [
             -- FIXME  =smth
             ]
 
-parseVar = Var <$> varType <*> (parseExpr Nothing)
-    where varType = chr '@' <|> chr '$' <|> chr '%'
+parseVar = dollar <|> other
+    where
+        other = Var <$> (chr '@' <|> chr '%') <*> normalVar
+        dollar = Var <$> chr '$'
+            <*> (normalVar <|> specialWeird <|> specialCaret <|> specialFilesAndRegexp)
+        normalVar = parseId <|> parseBlock <|> parseVar
+        specialWeird = (Id . B.singleton) <$> satisfy (inClass "_./,;:#?!@$<>()[]\\0")
+        specialCaret = Id <$> src ( chr '^' >> satisfy (inClass "A-Z") )
+        specialFilesAndRegexp = (Id . B.singleton) <$> satisfy (inClass "-&`'+|%=~^0-9") -- must go after caret as there is ^
 
 isOperator = inClass "-<>=&/\\!.*+?^:|~"
 

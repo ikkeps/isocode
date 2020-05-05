@@ -11,7 +11,7 @@ import qualified MatchingTests as M
 main :: IO ()
 main = hspec $ do
     ids
-    vars
+    variables
     values
     ops
     blocks
@@ -62,7 +62,58 @@ ids = describe "ids" $ do
     isMany "Some:Fake::Name" $ [ Id "Some", Op ":", Id "Fake::Name" ]
 
 
-vars = describe "vars" $ do
+variables = describe "variables" $ do
+    describe "special variables" $ do -- https://www.tutorialspoint.com/perl/perl_special_variables.htm
+        is "$_" $ Var 36 (Id "_")
+        is "$." $ Var 36 (Id ".") -- FIXME should it be Id?
+        is "$/" $ Var 36 (Id "/")
+        is "$," $ Var 36 (Id ",")
+        is "$\\" $ Var 36 (Id "\\")
+        is "$;" $ Var 36 (Id ";")
+        is "$^L" $ Var 36 (Id "^L")
+        is "$:" $ Var 36 (Id ":")
+        is "$^A" $ Var 36 (Id "^A")
+        is "$#" $ Var 36 (Id "#")
+        is "$?" $ Var 36 (Id "?")
+        is "$!" $ Var 36 (Id "!")
+        is "$@" $ Var 36 (Id "@")
+        is "$$" $ Var 36 (Id "$")
+        is "$<" $ Var 36 (Id "<")
+        is "$>" $ Var 36 (Id ">")
+        is "$(" $ Var 36 (Id "(")
+        is "$)" $ Var 36 (Id ")")
+        is "$0" $ Var 36 (Id "0")
+        is "$[" $ Var 36 (Id "[")
+        is "$]" $ Var 36 (Id "]")
+        is "$^D" $ Var 36 (Id "^D")
+        is "$^E" $ Var 36 (Id "^E")
+        is "$^F" $ Var 36 (Id "^F")
+        is "$^H" $ Var 36 (Id "^H")
+        is "$^I" $ Var 36 (Id "^I")
+        is "$^M" $ Var 36 (Id "^M")
+        is "$^O" $ Var 36 (Id "^O")
+        is "$^P" $ Var 36 (Id "^P")
+        is "$^T" $ Var 36 (Id "^T")
+        is "$^W" $ Var 36 (Id "^W")
+        is "$^X" $ Var 36 (Id "^X")
+
+    describe "special variables regular experssion" $ do
+        is "$0" $ Var 36 (Id "0")
+        is "$1" $ Var 36 (Id "1")
+        is "$&" $ Var 36 (Id "&")
+        is "$`" $ Var 36 (Id "`")
+        is "$'" $ Var 36 (Id "'")
+        is "$+" $ Var 36 (Id "+")
+
+    describe "special variables file handle" $ do
+        is "$|" $ Var 36 (Id "|")
+        is "$%" $ Var 36 (Id "%")
+        is "$=" $ Var 36 (Id "=")
+        is "$-" $ Var 36 (Id "-")
+        is "$~" $ Var 36 (Id "~")
+        is "$^" $ Var 36 (Id "^")
+
+
     describe "alowed chars" $ do
         is " $a_b " $ Var 36 (Id "a_b")
         is " $_b " $ Var 36 (Id "_b")
