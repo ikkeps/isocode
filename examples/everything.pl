@@ -15,7 +15,7 @@ there);
     say qq(hello\nthere);
 }
 
-sub loops {
+sub hashmaps {
 
     my $hashmap = {
         a => 1,
@@ -28,15 +28,24 @@ sub loops {
             say $key
         }
     }
-    for my $key ( sort keys %{$hashmap} ) {
-        if ( $other_hashmap->{$key} ) {
-            say $key
+    for my $k ( sort keys %{$hashmap} ) {
+        if ( $other_hashmap->{$k} ) {
+            say $k;
         }
     }
-
 }
 
+sub errors {
+    eval {
+        say "its ok";
+        1;
+    }
+    or do {
+        my $error = $@ || 'Zombie error';
+        say "it was not ok";
+    };
+}
 
 strings();
-loops();
+hashmaps();
 

@@ -219,6 +219,8 @@ values = describe "values" $ do
         is "qw[ kek \n \n lol ]" $ Qw ["kek", "lol"]
 
     describe "here document" $ do -- Note: newline is part of value in perl
+        isMany "<<SQL;\nnot\nterminated" [Op "<<",Id "SQL",Sep 59,Id "not", Id "terminated"]
+        isMany "<<SQL;\nnotterminated" [Op "<<",Id "SQL",Sep 59,Id "notterminated"]
         is "<<SQL;\nabc\nSQL" $ Val "abc"
         is "<<SQL;\nabc\nSQL\n" $ Val "abc\n"
         is "<<'SQL';\nabc\nSQL\n" $ Val "abc\n"

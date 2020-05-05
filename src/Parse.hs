@@ -205,14 +205,19 @@ parseHereDocument = do
         withEscapesTillMarker esc marker = scan
             where
                 scan = do
-                    choice [
-                          (chr '\n' >> string marker >> ( (chr '\n' >> return "\n") <|> (endOfInput >> return "") ))
-                        , (B.cons <$> tryEscape <*> scan) -- FIXME SLOOW
-                        , (B.cons <$> anyWord8 <*> scan) -- FIXME SLOOW
-                        ]
-                tryEscape = do
-                    chr '\\'
-                    esc <|> return (BI.c2w '\\')
+                    piece <- takeTill nlOrSlash
+                    next <- anyWord8 -- thats a shame, but makes code less error-prone
+                    tail <- case (BI.w2c next) of
+                        '\n' -> markerSeq <|> ( (B.cons next) <$> scan )
+                        '\\' -> B.cons <$> tryEscape <*> scan
+                        _ -> undefined
+                    return $ B.append piece tail
+
+                nlOrSlash w = w == (BI.c2w '\n') || w == (BI.c2w '\\')
+                tryEscape = esc <|> return (BI.c2w '\\')
+                markerSeq = do
+                    string marker
+                    (chr '\n' >> return "\n") <|> (endOfInput >> return "")
 
 chr c = word8 $ BI.c2w c
 
