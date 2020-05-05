@@ -202,22 +202,21 @@ parseHereDocument = do
         noQuotes = do
             Id marker <- parseId
             return $ (marker, fullEscapeSeq)
-        withEscapesTillMarker esc marker = scan
+        withEscapesTillMarker esc marker = B.concat <$> scan
             where
                 scan = do
                     piece <- takeTill nlOrSlash
                     next <- anyWord8 -- thats a shame, but makes code less error-prone
-                    tail <- case (BI.w2c next) of
-                        '\n' -> markerSeq <|> ( (B.cons next) <$> scan )
-                        '\\' -> B.cons <$> tryEscape <*> scan
+                    (piece:) <$> case BI.w2c next of
+                        '\n' -> markerSeq <|> ( ("\n":) <$> scan )
+                        '\\' -> (:) <$> tryEscape <*> scan
                         _ -> undefined
-                    return $ B.append piece tail
 
                 nlOrSlash w = w == (BI.c2w '\n') || w == (BI.c2w '\\')
-                tryEscape = esc <|> return (BI.c2w '\\')
+                tryEscape = (B.singleton <$> esc) <|> return "\\"
                 markerSeq = do
                     string marker
-                    (chr '\n' >> return "\n") <|> (endOfInput >> return "")
+                    (chr '\n' >> return ["\n"]) <|> (endOfInput >> return [""])
 
 chr c = word8 $ BI.c2w c
 
